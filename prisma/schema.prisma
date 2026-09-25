@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  nom          String
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id             Int      @id @default(1)
+  nomEntreprise  String   @default("Mon activité EAPAS")
+  siret          String?
+  adresse        String?
+  telephone      String?
+  email          String?
+  mentionTVA     String   @default("TVA non applicable, article 293 B du CGI")
+  tauxUrssaf     Float    @default(24.6)
+  portalEnabled  Boolean  @default(false)
+  assuranceRCPro String?
+  prochainDevis  Int      @default(1)
+  prochainFacture Int     @default(1)
+  prochainContrat Int     @default(1)
+  updatedAt      DateTime @updatedAt
+}
+
+model Patient {
+  id                  String   @id @default(cuid())
+  numDossier          String   @unique
+  nom                 String
+  prenom              String
+  dateNaissance       DateTime?
+  genre               String?
+  telephone           String?
+  email               String?
+  adresse             String?
+  metier              String   @default("EAPAS")
+  pathologieALD       String?
+  medecinPrescripteur String?
+  numPrescription     String?
+  datePrescription    DateTime?
+  dateBilanInitial    DateTime?
+  objectifPrincipal   String?
+  limitations         String?
+  statutSuivi         String   @default("Bilan initial à faire")
+  consentementRGPD    Boolean  @default(false)
+  dateConsentement    DateTime?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  entretiens       EntretienInitial[]
+  bilans           BilanClinique[]
+  objectifs        ObjectifSMART[]
+  ipaqEvaluations  IPAQEvaluation[]
+  bilansNutrition  BilanNutritionnel[]
+  seances          Seance[]
+  abonnement       Abonnement?
+  devis            Devis[]
+  contrats         Contrat[]
+  factures         Facture[]
+  savTickets       SAVTicket[]
+  patientAccess    PatientAccess?
+}
+
+model EntretienInitial {
+  id                     String   @id @default(cuid())
+  patientId              String
+  patient                Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date                   DateTime @default(now())
+  ressentiDemarrage      String?
+  experienceAnterieure   String?
+  quotidien              String?
+  depuisQuand            String?
+  prescritConseillePar   String?
+  declencheur            String?
+  representationAP       String?
+  souvenirPositif        String?
+  objectifPatientMots    String?
+  gesteAPreserver        String?
+  limitationsMedecin     String?
+  douleursApprehensions  String?
+  attentesCoach          String?
+  freinsPotentiels       String?
+  modaliteCommunication  String?
+  tempsAssisParJour      Int?
+  activitesActuelles     String?
+  evaDouleur             Int?
+  chutes12Mois           Boolean?
+  createdAt              DateTime @default(now())
+}
+
+model BilanClinique {
+  id            String   @id @default(cuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  phase         String
+  date          DateTime @default(now())
+  tm6Distance   Float?
+  tm6Borg       Int?
+  tm6FCMax      Int?
+  tm6SpO2       Float?
+  tugTemps      Float?
+  equilibreYO   Float?
+  equilibreYF   Float?
+  leversChaise  Int?
+  handgrip      Float?
+  pompesMur     Int?
+  flexionTronc  Float?
+  observations  String?
+  createdAt     DateTime @default(now())
+}
+
+model ObjectifSMART {
+  id            String    @id @default(cuid())
+  patientId     String
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  texteOriginal String
+  texteSMART    String
+  dateCible     DateTime?
+  atteint       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+}
+
+model IPAQEvaluation {
+  id                 String   @id @default(cuid())
+  patientId          String
+  patient            Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date               DateTime @default(now())
+  marcheJours        Int      @default(0)
+  marcheMinutes      Int      @default(0)
+  modJours           Int      @default(0)
+  modMinutes         Int      @default(0)
+  vigJours           Int      @default(0)
+  vigMinutes         Int      @default(0)
+  tempsAssisMinutes  Int?
+  scoreTotal         Float
+  classification     String
+}
+
+model BilanNutritionnel {
+  id                String   @id @default(cuid())
+  patientId         String
+  patient           Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date              DateTime @default(now())
+  taille            Float
+  poids             Float
+  tourDeTaille      Float?
+  age               Int
+  sexe              String
+  nap               Float
+  objectifPonderal  String
+  imc               Float
+  classificationIMC String
+  metabolismeBase   Float
+  depenseTotale     Float
+  apportCalorique   Float
+  apportProteines   Float
+  apportLipides     Float
+  apportGlucides    Float
+  hydratation       Float
+}
+
+model Seance {
+  id            String   @id @default(cuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date          DateTime
+  type          String?
+  format        String?
+  statut        String   @default("Planifiée")
+  contenu       String?
+  borgRessenti  Int?
+  notes         String?
+}
+
+model Abonnement {
+  id                   String    @id @default(cuid())
+  patientId            String    @unique
+  patient              Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  formule              String
+  montantMensuel       Float
+  dateDebut            DateTime
+  jourPrelevement      Int?
+  dateDernierPaiement  DateTime?
+  prochainPaiement     DateTime?
+  statutPaiement       String    @default("À jour")
+}
+
+model Devis {
+  id            String   @id @default(cuid())
+  numero        String   @unique
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date          DateTime @default(now())
+  validiteJours Int      @default(30)
+  lignes        String
+  total         Float
+  statut        String   @default("Envoyé")
+  createdAt     DateTime @default(now())
+}
+
+model Contrat {
+  id                    String    @id @default(cuid())
+  numero                String    @unique
+  patientId             String
+  patient               Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dateDebut             DateTime  @default(now())
+  formule               String?
+  inclusions            String?
+  dureeMois             Int?
+  frequenceSeances      String?
+  tarif                 Float?
+  modalitePaiement      String?
+  conditionsAnnulation  String?
+  statut                String    @default("Actif")
+  signeLe               DateTime?
+  createdAt             DateTime  @default(now())
+}
+
+model Facture {
+  id             String    @id @default(cuid())
+  numero         String    @unique
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date           DateTime  @default(now())
+  lignes         String
+  total          Float
+  modeReglement  String?
+  statut         String    @default("Émise")
+  dateEcheance   DateTime?
+  datePaiement   DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+model SAVTicket {
+  id          String    @id @default(cuid())
+  patientId   String?
+  patient     Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  sujet       String
+  description String?
+  statut      String    @default("Ouvert")
+  priorite    String    @default("Normale")
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+}
+
+model PatientAccess {
+  id          String    @id @default(cuid())
+  patientId   String    @unique
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  codeHash    String
+  actif       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+}
