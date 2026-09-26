@@ -62,7 +62,7 @@ curl -fsSL https://get.docker.com | sh
 ### 2. Récupérer le projet
 
 ```bash
-git clone <URL_DE_TON_DEPOT> eapas-suite
+git clone -b claude/business-eapas-project-jty172 https://github.com/resetpoidsmental-hue/BUSINESS-EAPAS.git eapas-suite
 cd eapas-suite
 ```
 
@@ -73,35 +73,30 @@ cp .env.example .env
 nano .env
 ```
 
-Renseigne :
+Renseigne au minimum :
 
 ```
 DATABASE_URL="file:/app/data/prod.db"
 AUTH_SECRET="<colle ici le résultat de : openssl rand -hex 32>"
+APP_HOST="suivi.ton-domaine.fr"
 ```
 
-### 4. Lancer l'application
+### 4. Brancher l'application sur le HTTPS
+
+**Cas fréquent : tu as déjà un n8n installé via le template Docker Compose
+communautaire (`traefik` + `n8n` dans le même fichier)** — c'est le cas si
+`docker ps` montre un conteneur nommé `xxx-traefik-1`. Dans ce cas,
+`docker-compose.yml` est déjà prêt à s'y brancher automatiquement : il ajoute
+juste les étiquettes ("labels") Traefik nécessaires et rejoint le même réseau
+Docker (par défaut `n8n_default` — renseigne `TRAEFIK_NETWORK` dans `.env` si
+le tien porte un autre nom, visible avec `docker network ls`). Il te suffit de
+lancer l'étape 5, rien d'autre à installer.
+
+**Si tu n'as aucun reverse proxy sur ce VPS**, le plus simple est
+[Caddy](https://caddyserver.com/) qui obtient un certificat HTTPS gratuit
+automatiquement :
 
 ```bash
-docker compose up -d --build
-```
-
-L'application tourne maintenant sur le port `3000` du VPS. Va sur
-`http://IP_DE_TON_VPS:3000` pour vérifier que ça répond (tu devrais voir la
-page de connexion). **Ne t'arrête pas là** : sans HTTPS, la connexion ne
-fonctionnera pas correctement (les cookies de sécurité exigent une connexion
-chiffrée) — passe à l'étape suivante.
-
-### 5. Exposer l'application en HTTPS (obligatoire)
-
-Le plus simple pour un débutant est [Caddy](https://caddyserver.com/), qui
-obtient et renouvelle automatiquement un certificat HTTPS gratuit (Let's
-Encrypt) sans configuration complexe.
-
-**Si tu n'as pas encore de reverse proxy sur ce VPS :**
-
-```bash
-curl -fsSL https://get.docker.com | sh   # si pas déjà fait
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
@@ -116,19 +111,21 @@ suivi.ton-domaine.fr {
 }
 ```
 
-Puis :
+Puis `sudo systemctl reload caddy`, et remplace dans `docker-compose.yml` la
+section `networks`/`labels` par un simple `ports: ["3000:3000"]` (tu n'as pas
+besoin des étiquettes Traefik dans ce cas).
+
+Dans les deux cas, assure-toi que le DNS de `APP_HOST` pointe vers l'IP de ton
+VPS (un enregistrement **A**, à créer chez ton registrar de domaine).
+
+### 5. Lancer l'application
 
 ```bash
-sudo systemctl reload caddy
+docker compose up -d --build
 ```
 
-Assure-toi que le DNS de `suivi.ton-domaine.fr` pointe vers l'IP de ton VPS
-(enregistrement A). Caddy obtient le certificat HTTPS automatiquement dès la
-première requête.
-
-**Si tu as déjà un reverse proxy (nginx, Caddy…) pour n8n :** ajoute simplement
-un nouveau bloc / server pointant vers `localhost:3000`, sur ton sous-domaine
-dédié à cette application.
+Le certificat HTTPS se génère automatiquement à la première visite (ça peut
+prendre jusqu'à une minute). Va sur `https://<APP_HOST>`.
 
 ### 6. Créer ton compte
 

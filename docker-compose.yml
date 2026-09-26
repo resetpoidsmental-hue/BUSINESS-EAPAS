@@ -1,13 +1,26 @@
 services:
   app:
     build: .
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     volumes:
       - eapas_data:/app/data
+    networks:
+      - default
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.eapas.rule=Host(`${APP_HOST}`)"
+      - "traefik.http.routers.eapas.tls=true"
+      - "traefik.http.routers.eapas.entrypoints=web,websecure"
+      - "traefik.http.routers.eapas.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.eapas.loadbalancer.server.port=3000"
     restart: unless-stopped
+
+networks:
+  traefik_net:
+    name: ${TRAEFIK_NETWORK:-n8n_default}
+    external: true
 
 volumes:
   eapas_data:
