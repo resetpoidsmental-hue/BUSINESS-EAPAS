@@ -6,7 +6,6 @@ services:
     volumes:
       - eapas_data:/app/data
     networks:
-      - default
       - traefik_net
     labels:
       - "traefik.enable=true"
@@ -15,6 +14,7 @@ services:
       - "traefik.http.routers.eapas.entrypoints=web,websecure"
       - "traefik.http.routers.eapas.tls.certresolver=mytlschallenge"
       - "traefik.http.services.eapas.loadbalancer.server.port=3000"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-n8n_default}"
     restart: unless-stopped
 
 networks:
