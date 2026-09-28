@@ -172,11 +172,18 @@ sauvegarde avant de mettre à jour.
   usuelles (auto-entrepreneur, TVA art. 293B, RGPD) mais **ne remplacent pas un
   avis juridique** — fais-les valider par un comptable/juriste avant usage réel.
 
+## Site vitrine
+
+Le dossier [`vitrine/`](./vitrine) contient un site public séparé (marketing, SEO,
+formules, articles, recettes) connecté à EAPAS Suite via n8n. Voir
+[`vitrine/README.md`](./vitrine/README.md) pour le déployer et finir de le connecter
+(NocoDB, Telegram, n8n).
+
 ## Pistes d'évolution non incluses dans cette v1
 
-- Intégration directe avec tes automatisations n8n existantes (ex. webhook de
-  notification à l'arrivée d'un nouveau patient, relance automatique) — les
-  routes `/api/documents/*` peuvent servir de point de départ.
+- Paiement/réservation en ligne (Stripe) sur la page Formules, connecté à l'agenda
+  et à l'application (Devis/Facture/Abonnement créés automatiquement).
+- Agent IA de suivi patient (création des séances, suivi courant) avec validation du
+  coach obligatoire sur les bilans (initial, intermédiaires, final).
 - Questionnaire Ricci & Gagnon (mentionné dans certaines de tes ressources) en
   complément du calculateur IPAQ déjà implémenté.
-- Bibliothèque de séances/exercices type "programme du jour".

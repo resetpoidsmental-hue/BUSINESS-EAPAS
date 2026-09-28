@@ -1,0 +1,21 @@
+services:
+  vitrine:
+    build: .
+    env_file:
+      - .env
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vitrine.rule=Host(`${SITE_HOST}`)"
+      - "traefik.http.routers.vitrine.tls=true"
+      - "traefik.http.routers.vitrine.entrypoints=web,websecure"
+      - "traefik.http.routers.vitrine.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.vitrine.loadbalancer.server.port=3000"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-n8n_default}"
+    restart: unless-stopped
+
+networks:
+  traefik_net:
+    name: ${TRAEFIK_NETWORK:-n8n_default}
+    external: true

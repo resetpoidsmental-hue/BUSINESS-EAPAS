@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf7f1;
+  --surface: #ffffff;
+  --surface-muted: #f3eee4;
+  --foreground: #17261f;
+  --muted: #55645c;
+  --border: #e7e0d3;
+
+  --primary: #0e6e5e;
+  --primary-hover: #0a5548;
+  --primary-foreground: #faf7f1;
+  --primary-soft: #e6f0eb;
+
+  --accent: #9c6b3a;
+  --accent-soft: #f3e9de;
+
+  --ink: #17261f;
+  --radius: 1rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ink: var(--ink);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.5rem);
+  --radius-sm: calc(var(--radius) - 0.4rem);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-work-sans);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
