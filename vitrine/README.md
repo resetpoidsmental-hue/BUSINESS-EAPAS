@@ -55,6 +55,7 @@ Dans NocoDB, crée une nouvelle base nommée exactement **`EAPAS Vitrine`**, pui
 | Extrait | Long text |
 | Contenu | Long text (HTML) |
 | ImageUrl | Single line text (URL) |
+| ImageFichier | **Attachment** — stocke le fichier image généré par OpenAI ; `ImageUrl` est automatiquement rempli avec l'URL publique de ce fichier par le workflow hebdomadaire. |
 | SeoTitre | Single line text |
 | SeoDescription | Long text |
 | Statut | Single select : `Brouillon`, `En attente de validation`, `Publié`, `Rejeté` |
@@ -99,12 +100,18 @@ Dans n8n (**Credentials** dans le menu de gauche) :
    Name: `xc-token`, Value: le token copié à l'étape 2.
 2. **Nouveau credential** → type **Telegram API** → nomme-le
    `Telegram - Bot EAPAS Vitrine` → colle le token du bot (étape 3).
+3. **Nouveau credential** → type **OpenAI** → colle ta clé API OpenAI (nécessaire pour
+   la génération d'image des articles — [platform.openai.com/api-keys](https://platform.openai.com/api-keys)).
+4. **Nouveau credential** → type **NocoDB API Token** → renseigne l'URL de ton instance
+   et le même token que celui de l'étape 2 (c'est un type de credential différent du
+   Header Auth, requis par le nœud d'upload d'image NocoDB).
 
 Ouvre ensuite chacun des deux workflows ci-dessus et, sur chaque nœud qui affiche un
-triangle d'avertissement (nœuds NocoDB et Telegram), sélectionne le credential que tu
+triangle d'avertissement (nœuds NocoDB, Telegram, OpenAI), sélectionne le credential que tu
 viens de créer dans le menu déroulant "Credential to connect with". Sur le nœud
 **"Claude - Rediger article"**, vérifie qu'un credential Anthropic est bien sélectionné
-(un de ceux déjà existants convient).
+(un de ceux déjà existants convient). Sur le nœud **"NocoDB - Uploader image"**, sélectionne
+aussi le champ `ImageFichier` (créé à l'étape 1) dans le paramètre "Field Name".
 
 ## Étape 5 — Ajouter les variables d'environnement au conteneur n8n
 
@@ -148,14 +155,20 @@ correspondant chez PlanetHoster comme tu l'as fait pour `eapa.sante-and-co.com`.
 
 - Le formulaire de contact répond immédiatement au visiteur (le prospect est enregistré
   et toi notifié en arrière-plan) — pas d'attente côté site.
-- Les images d'articles sont générées par [Pollinations.ai](https://pollinations.ai)
-  (gratuit, open source, sans clé API) à partir d'une description que Claude rédige pour
-  chaque article.
+- Les images d'articles sont générées par OpenAI (modèle `gpt-image-1-mini`) à partir
+  d'une description que Claude rédige pour chaque article, puis hébergées sur ton
+  instance NocoDB (champ `ImageFichier`) pour obtenir une URL permanente — contrairement
+  à une URL OpenAI brute, qui expire après environ 1h.
+- Le thème hebdomadaire est tiré selon une rotation pondérée : 70% des semaines portent
+  sur des catégories alignées avec le positionnement actuel (Nutrition, Activité
+  physique, Recette, Motivation), 30% sur des catégories plus larges (APA, Bien-être)
+  pour le référencement et les publics futurs. Ajustable dans le nœud "Choisir le theme
+  de la semaine" (tableau `rotation`).
 - Volontairement, le thème « médecine naturelle » n'est pas couvert par la génération
   automatique : les contenus santé générés sans supervision se limitent à l'activité
   physique adaptée, la nutrition, le bien-être et les recettes — des sujets sur lesquels
   Claude peut rester factuel sans risquer de relayer des allégations non vérifiées. Tu
   peux bien sûr écrire toi-même un article sur ce thème directement dans NocoDB.
-- Pour changer d'outil de génération d'image plus tard (ex. un autre modèle open source),
-  il suffit de modifier le nœud "Preparer le brouillon" dans le workflow — tout le reste
-  du système (NocoDB, Telegram, le site) continue de fonctionner à l'identique.
+- Pour changer d'outil de génération d'image plus tard (ex. un autre modèle), il suffit
+  de remplacer le nœud "OpenAI - Generer image" dans le workflow — tout le reste du
+  système (hébergement NocoDB, Telegram, le site) continue de fonctionner à l'identique.
