@@ -1,18 +1,12 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border bg-surface">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr]">
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-display text-sm font-semibold text-primary-foreground">
-              S
-            </span>
-            <span className="font-display text-base font-semibold text-ink">
-              Santé &amp; Co
-            </span>
-          </div>
+          <Logo height={30} />
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
             Activité physique adaptée &amp; coaching nutrition avec Martial MILON —
             un accompagnement personnalisé pour bouger et manger mieux, durablement.

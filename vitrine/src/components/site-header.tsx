@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 const NAV = [
   { href: "/formules", label: "Formules" },
@@ -11,14 +12,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary font-display text-base font-semibold text-primary-foreground">
-            S
-          </span>
-          <span className="font-display text-lg font-semibold text-ink">
-            Santé &amp; Co
-          </span>
-        </Link>
+        <Logo height={34} />
         <nav className="hidden items-center gap-7 text-sm font-medium text-muted sm:flex">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className="transition hover:text-ink">
