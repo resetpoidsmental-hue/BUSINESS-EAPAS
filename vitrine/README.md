@@ -111,6 +111,97 @@ Choisis pour `SITE_HOST` l'adresse que tu veux pour la vitrine (par exemple
 `sante-and-co.com` ou `www.sante-and-co.com`), et crée l'enregistrement DNS **A**
 correspondant chez PlanetHoster comme tu l'as fait pour `eapa.sante-and-co.com`.
 
+## Analytics (Umami)
+
+Mesure d'audience auto-hébergée (open source, respectueuse de la vie privée, aucune
+donnée envoyée à un tiers type Google). Elle tourne sur le **même VPS que n8n**, comme
+NocoDB.
+
+### 1. Ajouter Umami au docker-compose de ton VPS n8n
+
+Sur le VPS, dans le dossier où vit le `docker-compose.yml` qui lance n8n (celui avec le
+réseau `n8n_default` / Traefik), ajoute ce service :
+
+```yaml
+  umami-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: change-moi-un-mot-de-passe-fort
+    volumes:
+      - umami_db_data:/var/lib/postgresql/data
+    networks:
+      - default
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://umami:change-moi-un-mot-de-passe-fort@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: colle-ici-le-resultat-de-openssl-rand-hex-32
+    depends_on:
+      - umami-db
+    networks:
+      - default
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.umami.rule=Host(`analytics.sante-and-co.com`)"
+      - "traefik.http.routers.umami.tls=true"
+      - "traefik.http.routers.umami.entrypoints=web,websecure"
+      - "traefik.http.routers.umami.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.umami.loadbalancer.server.port=3000"
+      - "traefik.docker.network=n8n_default"
+
+volumes:
+  umami_db_data:
+```
+
+(Si ton fichier a déjà une section `volumes:` ou `networks:` en bas, ajoute juste les
+nouvelles entrées dedans plutôt que d'en dupliquer une.) Remplace les deux mots de passe
+par de vraies valeurs générées (`openssl rand -hex 32`), puis :
+
+```bash
+docker compose up -d
+```
+
+### 2. Pointer le DNS
+
+Chez PlanetHoster, ajoute un enregistrement **A** pour `analytics.sante-and-co.com`
+pointant vers l'IP de ton VPS — comme pour les autres sous-domaines.
+
+### 3. Créer ton compte et ton site dans Umami
+
+Va sur `https://analytics.sante-and-co.com`. Au premier lancement, connecte-toi avec les
+identifiants par défaut (`admin` / `umami`), **change le mot de passe immédiatement**
+(Settings → Profile), puis va dans **Settings → Websites → Add website** :
+- Name : `Santé & Co`
+- Domain : `sante-and-co.com`
+
+Umami te donne un **Website ID** (un UUID) — copie-le.
+
+### 4. Activer le tracking sur le site
+
+Dans le `.env` de la vitrine (sur le VPS, dans le dossier du site) :
+
+```
+UMAMI_URL="https://analytics.sante-and-co.com"
+UMAMI_WEBSITE_ID="colle-ici-le-website-id"
+```
+
+Puis redéploie le site :
+
+```bash
+docker compose up -d --build
+```
+
+Le script de tracking se charge automatiquement dès que ces deux variables sont
+renseignées (rien ne se charge si elles sont vides). Les statistiques apparaissent dans
+Umami quelques secondes après ta première visite.
+
 ## Notes
 
 - Le formulaire de contact répond immédiatement au visiteur (le prospect est enregistré

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -29,12 +30,22 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const umamiUrl = process.env.UMAMI_URL;
+  const umamiWebsiteId = process.env.UMAMI_WEBSITE_ID;
+
   return (
     <html lang="fr">
       <body className={`${fraunces.variable} ${workSans.variable} antialiased`}>
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />
+        {umamiUrl && umamiWebsiteId && (
+          <Script
+            src={`${umamiUrl}/script.js`}
+            data-website-id={umamiWebsiteId}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
