@@ -6,23 +6,28 @@ recettes) généré automatiquement chaque semaine par un agent IA, **validé pa
 Telegram avant publication**.
 
 - Contenu (Formules, Articles) : stocké dans **NocoDB** (déjà installé sur ton VPS).
-- Génération hebdomadaire + validation : deux workflows **n8n** (déjà créés, à finir de
-  configurer — voir plus bas).
-- Le site fonctionne dès le déploiement même sans rien configurer : il affiche un
-  contenu de secours (2 formules, 3 articles) tant que NocoDB n'est pas branché.
+- Génération hebdomadaire + validation : deux workflows **n8n**, configurés et actifs.
+- Le site affiche un contenu de secours (2 formules, 3 articles) si jamais NocoDB
+  devient injoignable — sinon il lit les vraies données.
 
-## Ce qui a déjà été fait pour toi
+## État actuel (à jour)
 
 - Le code du site (`vitrine/`) est prêt et testé.
-- Les deux workflows n8n sont créés (mais **inactifs**, le temps que tu configures les
-  identifiants) :
-  - [Vitrine - Contenu hebdo (génération + validation Telegram)](https://n8n.srv1566455.hstgr.cloud/workflow/24ckhBsSYcfK9utf)
-  - [Vitrine - Nouveau prospect](https://n8n.srv1566455.hstgr.cloud/workflow/vNjH401C8TCPiyAB)
+- Les 3 tables NocoDB (`Formules`, `Articles`, `Leads`) sont créées et remplies avec les
+  vraies formules (Essentiel 89€, Premium 149€, Ultimate 229€).
+- Les deux workflows n8n sont **actifs** et testés en conditions réelles de bout en bout :
+  - [Vitrine - Contenu hebdo (génération + validation Telegram)](https://n8n.srv1566455.hstgr.cloud/workflow/24ckhBsSYcfK9utf) —
+    rédaction Claude → image OpenAI (`gpt-image-1-mini`) → hébergement NocoDB → validation
+    Telegram → publication. Tourne chaque lundi à 8h.
+  - [Vitrine - Nouveau prospect](https://n8n.srv1566455.hstgr.cloud/workflow/vNjH401C8TCPiyAB) —
+    reçoit le formulaire de contact, enregistre le prospect dans NocoDB, notifie le coach
+    sur Telegram.
 
-Il te reste 6 étapes manuelles (aucune ne demande de compétence technique particulière,
-tu as déjà fait des choses plus compliquées pour EAPAS Suite !).
+Les sections ci-dessous documentent comment c'est configuré (utile si tu dois un jour
+recréer un credential, changer de VPS, ou comprendre un réglage) — ce n'est plus une
+checklist à faire.
 
-## Étape 1 — Créer la base et les tables dans NocoDB
+## Référence — structure NocoDB
 
 Dans NocoDB, crée une nouvelle base nommée exactement **`EAPAS Vitrine`**, puis crée ces
 3 tables avec ces champs exacts (les noms comptent, en majuscules/minuscules) :
@@ -74,69 +79,24 @@ Dans NocoDB, crée une nouvelle base nommée exactement **`EAPAS Vitrine`**, pui
 | Source | Single line text |
 | Statut | Single select : `Nouveau`, `Contacté`, `Converti`, `Perdu` |
 
-Tu peux ensuite ajouter tes vraies formules dans `Formules` (statut `Actif`). Pour
-`Articles`, laisse-la vide : c'est le workflow hebdomadaire qui la remplit.
+## Référence — credentials n8n
 
-## Étape 2 — Créer un token API NocoDB
+Credentials déjà créés dans n8n (**Credentials** dans le menu de gauche) :
 
-Dans NocoDB : clique sur ton avatar (en bas à gauche) → **Account Settings** → **Tokens**
-→ **Create New Token**. Copie la valeur générée, tu en auras besoin à l'étape 4.
+1. **Header Auth** `NocoDB - xc-token` — Name: `xc-token`, Value: ton token NocoDB
+   (généré dans NocoDB via avatar → **Account Settings** → **Tokens**).
+2. **Telegram API** `Telegram - Bot EAPAS Vitrine` — token du bot (créé via @BotFather
+   sur Telegram).
+3. **OpenAI** — clé API OpenAI (génération d'image des articles).
+4. **NocoDB API Token** `NocoDB Token account` — Host = l'URL de base de ton instance
+   NocoDB (sans chemin après le domaine), API Token = le même token qu'au point 1.
+   C'est un type de credential différent du Header Auth, requis par le nœud d'upload
+   d'image NocoDB.
 
-## Étape 3 — Créer un bot Telegram
-
-1. Ouvre Telegram, cherche **@BotFather**, envoie `/newbot`, suis les instructions
-   (choisis un nom et un nom d'utilisateur se terminant par `bot`).
-2. BotFather te donne un **token** (garde-le précieusement, c'est comme un mot de passe).
-3. Démarre une conversation avec ton nouveau bot (cherche-le par son nom d'utilisateur,
-   clique sur "Démarrer" / `/start`).
-4. Pour connaître ton **chat_id** : cherche **@userinfobot** sur Telegram, démarre une
-   conversation avec lui, il t'affiche immédiatement ton `Id` — c'est ton chat_id.
-
-## Étape 4 — Configurer les identifiants dans n8n
-
-Dans n8n (**Credentials** dans le menu de gauche) :
-
-1. **Nouveau credential** → type **Header Auth** → nomme-le `NocoDB - xc-token` →
-   Name: `xc-token`, Value: le token copié à l'étape 2.
-2. **Nouveau credential** → type **Telegram API** → nomme-le
-   `Telegram - Bot EAPAS Vitrine` → colle le token du bot (étape 3).
-3. **Nouveau credential** → type **OpenAI** → colle ta clé API OpenAI (nécessaire pour
-   la génération d'image des articles — [platform.openai.com/api-keys](https://platform.openai.com/api-keys)).
-4. **Nouveau credential** → type **NocoDB API Token** → renseigne l'URL de ton instance
-   et le même token que celui de l'étape 2 (c'est un type de credential différent du
-   Header Auth, requis par le nœud d'upload d'image NocoDB).
-
-Ouvre ensuite chacun des deux workflows ci-dessus et, sur chaque nœud qui affiche un
-triangle d'avertissement (nœuds NocoDB, Telegram, OpenAI), sélectionne le credential que tu
-viens de créer dans le menu déroulant "Credential to connect with". Sur le nœud
-**"Claude - Rediger article"**, vérifie qu'un credential Anthropic est bien sélectionné
-(un de ceux déjà existants convient). Sur le nœud **"NocoDB - Uploader image"**, sélectionne
-aussi le champ `ImageFichier` (créé à l'étape 1) dans le paramètre "Field Name".
-
-## Étape 5 — Ajouter les variables d'environnement au conteneur n8n
-
-Édite le fichier `.env` (ou `docker-compose.yml`) qui sert à lancer ton conteneur n8n
-sur le VPS, et ajoute ces lignes (remplace les valeurs par les tiennes) :
-
-```
-NOCODB_URL=https://nocodb.sante-and-co.com
-NOCODB_TABLE_ARTICLES_ID=coller_ici_l_ID_de_la_table_Articles
-NOCODB_TABLE_LEADS_ID=coller_ici_l_ID_de_la_table_Leads
-TELEGRAM_CHAT_ID=ton_chat_id_de_l_etape_3
-```
-
-Pour trouver l'ID d'une table dans NocoDB : ouvre la table, puis dans la barre d'adresse
-de ton navigateur l'URL contient un segment qui commence par `m` (ex. `mZ3k9...`) — c'est
-l'ID de la table. Tu peux aussi le trouver via **API Docs** dans les réglages de la base.
-
-Puis redémarre le conteneur n8n pour que les nouvelles variables soient prises en compte
-(`docker compose up -d` dans le dossier de ton n8n).
-
-## Étape 6 — Activer les workflows
-
-Dans n8n, ouvre les deux workflows et bascule l'interrupteur **Active** en haut à droite
-de chacun. C'est tout : le contenu hebdomadaire démarrera le lundi suivant à 8h, et le
-formulaire de contact du site fonctionnera immédiatement.
+Si un credential doit être recréé, ouvre le workflow concerné et sélectionne-le sur
+chaque nœud qui affiche un triangle d'avertissement. Sur **"NocoDB - Uploader image"**,
+vérifie aussi que le champ `ImageFichier` est bien sélectionné dans le paramètre
+"Field Name".
 
 ## Déployer le site sur le VPS
 
