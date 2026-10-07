@@ -71,7 +71,7 @@ export default async function ArticleDetailPage({
 
       <div className="mt-14 rounded-2xl bg-surface-muted p-6 text-center">
         <p className="font-display text-lg font-semibold text-ink">
-          Envie d&rsquo;un accompagnement personnalisé ?
+          Envie d&rsquo;un accompagnement qui tient dans la durée ?
         </p>
         <Link
           href="/contact"
