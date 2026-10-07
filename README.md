@@ -37,13 +37,35 @@ service tiers. Coût d'hébergement : 0 € de plus que ton VPS actuel.
 ```bash
 npm install
 cp .env.example .env        # puis remplace AUTH_SECRET par une vraie valeur
-npx prisma db push          # crée la base SQLite
+npx prisma migrate dev      # crée la base SQLite et applique les migrations
 npm run seed                # (optionnel) données de démonstration
 npm run dev
 ```
 
 Ouvre <http://localhost:3000> — la première visite te propose de créer ton
 compte professionnel.
+
+### Tests automatisés
+
+```bash
+npm test
+```
+
+Couvre les fonctions critiques en calcul pur (IMC, métabolisme de base,
+score IPAQ, apports nutritionnels, progression des tests PASS) et en
+sécurité (hachage des mots de passe, des codes d'accès patients). Pas de
+tests end-to-end pour l'instant — à ajouter si l'app grossit.
+
+### Évolution du schéma de base de données
+
+```bash
+# après avoir modifié prisma/schema.prisma
+npx prisma migrate dev --name description-du-changement
+```
+
+Ça crée un fichier SQL dans `prisma/migrations/`, à committer avec le code.
+Ne reviens pas à `prisma db push` : sans historique de migrations, un
+changement de schéma peut silencieusement perdre des données en production.
 
 ## Déploiement sur ton VPS (Docker)
 
@@ -156,8 +178,10 @@ docker compose up -d --build
 ```
 
 Le schéma de base de données se met à jour automatiquement au démarrage
-(`prisma db push`). En cas de changement de structure important, fais une
-sauvegarde avant de mettre à jour.
+(`prisma migrate deploy` applique les migrations pas encore jouées — chaque
+changement de structure est tracé dans `prisma/migrations/`, versionné avec
+le code). En cas de changement de structure important, fais une sauvegarde
+avant de mettre à jour.
 
 ## Sécurité & RGPD
 
