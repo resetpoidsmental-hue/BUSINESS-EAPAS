@@ -274,7 +274,7 @@ export default async function AccueilPage() {
         </div>
       </section>
 
-      <section className="bg-surface-muted py-16">
+      <section id="faq" className="scroll-mt-20 bg-surface-muted py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-primary">
             Questions fréquentes

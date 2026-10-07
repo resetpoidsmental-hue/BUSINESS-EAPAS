@@ -5,7 +5,7 @@ import { ArticleCard } from "@/components/article-card";
 export const metadata: Metadata = {
   title: "Articles",
   description:
-    "Conseils en activité physique adaptée, nutrition et bien-être, publiés chaque semaine par Santé & Co.",
+    "Des conseils concrets en nutrition et activité physique adaptée pour sortir du yo-yo, publiés chaque semaine par Santé & Co.",
 };
 
 export default async function ArticlesPage() {
@@ -15,11 +15,11 @@ export default async function ArticlesPage() {
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <p className="text-sm font-semibold uppercase tracking-wide text-primary">Articles</p>
       <h1 className="mt-3 max-w-2xl font-display text-4xl font-semibold text-ink">
-        Conseils santé, bien-être & activité physique
+        Nutrition, mouvement et habitudes qui durent
       </h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
-        Un nouvel article chaque semaine sur l&rsquo;activité physique adaptée, la
-        nutrition et le bien-être au quotidien.
+        Des conseils concrets pour sortir du yo-yo : nutrition, activité physique
+        adaptée et vraies habitudes durables — un nouvel article chaque semaine.
       </p>
 
       {articles.length === 0 ? (
