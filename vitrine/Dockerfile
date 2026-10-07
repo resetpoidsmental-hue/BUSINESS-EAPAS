@@ -7,6 +7,13 @@ RUN npm ci
 
 FROM deps AS builder
 COPY . .
+# Non-secrets: visible in the page's HTML source to every visitor anyway.
+# Baked in at build time because env_file only injects vars at container
+# runtime, after Next.js has already prerendered pages with them unset.
+ARG UMAMI_URL
+ARG UMAMI_WEBSITE_ID
+ENV UMAMI_URL=${UMAMI_URL}
+ENV UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID}
 RUN npm run build
 
 FROM base AS runner
