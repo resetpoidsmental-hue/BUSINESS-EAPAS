@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // vitrine/ is a separate Next.js project with its own lint config.
+    "vitrine/**",
   ]),
 ]);
 
