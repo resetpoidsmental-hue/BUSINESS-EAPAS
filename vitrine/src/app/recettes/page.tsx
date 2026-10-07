@@ -4,7 +4,8 @@ import { ArticleCard } from "@/components/article-card";
 
 export const metadata: Metadata = {
   title: "Recettes",
-  description: "Des recettes simples et équilibrées pour accompagner ton entraînement, par Santé & Co.",
+  description:
+    "Des recettes simples et équilibrées, pensées pour tenir dans la durée — pas pour un régime de plus. Par Santé & Co.",
 };
 
 export default async function RecettesPage() {
@@ -14,11 +15,11 @@ export default async function RecettesPage() {
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <p className="text-sm font-semibold uppercase tracking-wide text-primary">Recettes</p>
       <h1 className="mt-3 max-w-2xl font-display text-4xl font-semibold text-ink">
-        Manger équilibré, simplement
+        Manger équilibré, sans prise de tête
       </h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
-        Des recettes rapides et accessibles pour accompagner tes séances et ton
-        quotidien.
+        Des recettes simples et rapides, pensées pour s&rsquo;intégrer à ton
+        quotidien et tenir dans la durée — pas pour un régime de plus.
       </p>
 
       {recettes.length === 0 ? (
