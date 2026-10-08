@@ -169,16 +169,19 @@ model BilanNutritionnel {
 }
 
 model Seance {
-  id            String   @id @default(cuid())
-  patientId     String
-  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  date          DateTime
-  type          String?
-  format        String?
-  statut        String   @default("Planifiée")
-  contenu       String?
-  borgRessenti  Int?
-  notes         String?
+  id                  String   @id @default(cuid())
+  patientId           String
+  patient             Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date                DateTime
+  type                String?
+  format              String?
+  statut              String   @default("Planifiée")
+  contenu             String?
+  genereParIA         Boolean  @default(false)
+  materielNecessaire  String?
+  materielVu          Boolean  @default(false)
+  borgRessenti        Int?
+  notes               String?
 }
 
 model Abonnement {
