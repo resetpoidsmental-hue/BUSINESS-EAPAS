@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { Target, CalendarDays } from "lucide-react";
+import { Target, CalendarDays, Backpack } from "lucide-react";
+import { marquerMaterielVu } from "./actions";
 
 export default async function PortailDashboard() {
   const session = await getPatientSession();
@@ -16,6 +17,8 @@ export default async function PortailDashboard() {
   });
 
   if (!patient) return null;
+
+  const prochaineAvecMateriel = patient.seances.find((s) => s.materielNecessaire && !s.materielVu);
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,6 +35,27 @@ export default async function PortailDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {prochaineAvecMateriel && (
+        <Card className="border-primary">
+          <CardContent className="flex gap-3 p-5">
+            <Backpack className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold">
+                Ta prochaine séance — {formatDateTime(prochaineAvecMateriel.date)}
+              </p>
+              <p className="text-sm text-foreground">
+                Pense à préparer : <strong>{prochaineAvecMateriel.materielNecessaire}</strong>.
+              </p>
+              <form action={marquerMaterielVu.bind(null, prochaineAvecMateriel.id)}>
+                <button type="submit" className="w-fit text-xs font-semibold text-primary hover:underline">
+                  J&rsquo;ai compris
+                </button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-5">

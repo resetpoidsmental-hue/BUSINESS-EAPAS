@@ -22,6 +22,14 @@ service tiers. Coût d'hébergement : 0 € de plus que ton VPS actuel.
 - **SAV** : tickets de suivi des demandes et réclamations.
 - **Portail patient** (à activer dans Réglages) : chaque patient reçoit un code
   d'accès personnel pour consulter son programme, ses bilans et ses factures.
+  Il est aussi prévenu à l'avance du matériel nécessaire pour sa prochaine
+  séance.
+- **Assistant IA** (optionnel, nécessite une clé API Anthropic) : aide à
+  préparer une fiche de séance détaillée (objectifs, échauffement/corps de
+  séance/retour au calme, exercices avec RPE, matériel, sécurité, variantes,
+  respiration, points de vigilance) à partir du profil du patient et de ses
+  dernières séances. L'IA propose un brouillon modifiable ; rien n'est écrit
+  dans le dossier patient sans validation explicite du coach.
 
 ## Stack technique
 
@@ -102,6 +110,10 @@ DATABASE_URL="file:/app/data/prod.db"
 AUTH_SECRET="<colle ici le résultat de : openssl rand -hex 32>"
 APP_HOST="suivi.ton-domaine.fr"
 ```
+
+Ajoute en plus `ANTHROPIC_API_KEY` (optionnel) si tu veux activer l'**Assistant
+IA** — clé obtenue sur [console.anthropic.com](https://console.anthropic.com/settings/keys).
+Laisse-la vide pour que le reste de l'application fonctionne normalement sans.
 
 ### 4. Brancher l'application sur le HTTPS
 
@@ -207,7 +219,10 @@ formules, articles, recettes) connecté à EAPAS Suite via n8n. Voir
 
 - Paiement/réservation en ligne (Stripe) sur la page Formules, connecté à l'agenda
   et à l'application (Devis/Facture/Abonnement créés automatiquement).
-- Agent IA de suivi patient (création des séances, suivi courant) avec validation du
-  coach obligatoire sur les bilans (initial, intermédiaires, final).
+- Assistant IA : génération d'objectifs SMART, de brouillons de bilan
+  (T1/T2/final) et de réponses SAV — seule la préparation de fiche de séance
+  est implémentée pour l'instant (voir « Assistant IA » ci-dessus).
+- Notification du matériel nécessaire par email en plus du portail patient
+  (nécessite de connecter l'app à un service d'envoi d'email, ex. Resend).
 - Questionnaire Ricci & Gagnon (mentionné dans certaines de tes ressources) en
   complément du calculateur IPAQ déjà implémenté.

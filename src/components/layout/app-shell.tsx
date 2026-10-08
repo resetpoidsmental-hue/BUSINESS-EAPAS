@@ -8,6 +8,7 @@ import {
   Users,
   Salad,
   FileText,
+  Sparkles,
   LifeBuoy,
   Settings,
   Menu,
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/patients", label: "Patients & clients", icon: Users },
   { href: "/nutrition", label: "Nutrition", icon: Salad },
   { href: "/administratif", label: "Administratif", icon: FileText },
+  { href: "/assistant", label: "Assistant IA", icon: Sparkles },
   { href: "/sav", label: "SAV", icon: LifeBuoy },
   { href: "/reglages", label: "Réglages", icon: Settings },
 ];

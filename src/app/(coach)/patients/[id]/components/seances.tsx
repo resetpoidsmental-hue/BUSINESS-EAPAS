@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FicheSeanceCard } from "@/components/fiche-seance-card";
+import { parseFicheSeance } from "@/lib/fiche-seance";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Sparkles } from "lucide-react";
 
 const initialState: ActionState = {};
 
@@ -20,6 +22,8 @@ interface SeanceItem {
   format: string | null;
   statut: string;
   contenu: string | null;
+  genereParIA: boolean;
+  materielNecessaire: string | null;
   borgRessenti: number | null;
   notes: string | null;
 }
@@ -83,43 +87,58 @@ export function SeancesSection({ patientId, seances }: { patientId: string; sean
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {seances.length === 0 && <p className="text-sm text-muted">Aucune séance planifiée.</p>}
-        {seances.map((s) => (
-          <Card key={s.id}>
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div className="flex items-start gap-3">
-                <CalendarDays className="mt-0.5 h-4 w-4 text-primary" />
-                <div>
-                  <p className="text-sm font-medium">{formatDateTime(s.date)}</p>
-                  <p className="text-xs text-muted">
-                    {s.type ?? "Séance"} {s.format && `· ${s.format}`}
-                    {s.borgRessenti !== null && ` · Borg ${s.borgRessenti}/10`}
-                  </p>
-                  {s.contenu && <p className="mt-1 text-xs text-foreground/80">{s.contenu}</p>}
-                  {s.notes && <p className="mt-1 text-xs italic text-muted">{s.notes}</p>}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={STATUT_VARIANT[s.statut] ?? "muted"}>{s.statut}</Badge>
-                {s.statut === "Planifiée" && (
-                  <div className="flex gap-1">
-                    <form action={updateSeanceStatut.bind(null, s.id, patientId, "Faite")}>
-                      <Button size="sm" variant="secondary" type="submit">
-                        Faite
-                      </Button>
-                    </form>
-                    <form action={updateSeanceStatut.bind(null, s.id, patientId, "Annulée")}>
-                      <Button size="sm" variant="ghost" type="submit">
-                        Annuler
-                      </Button>
-                    </form>
+        {seances.map((s) => {
+          const fiche = parseFicheSeance(s.contenu);
+          return (
+            <Card key={s.id}>
+              <CardContent className="flex flex-col gap-3 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <CalendarDays className="mt-0.5 h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{formatDateTime(s.date)}</p>
+                      <p className="text-xs text-muted">
+                        {s.type ?? "Séance"} {s.format && `· ${s.format}`}
+                        {s.borgRessenti !== null && ` · Borg ${s.borgRessenti}/10`}
+                      </p>
+                    </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    {s.genereParIA && (
+                      <Badge variant="outline" className="gap-1">
+                        <Sparkles className="h-3 w-3" /> Préparée par l&rsquo;IA
+                      </Badge>
+                    )}
+                    <Badge variant={STATUT_VARIANT[s.statut] ?? "muted"}>{s.statut}</Badge>
+                    {s.statut === "Planifiée" && (
+                      <div className="flex gap-1">
+                        <form action={updateSeanceStatut.bind(null, s.id, patientId, "Faite")}>
+                          <Button size="sm" variant="secondary" type="submit">
+                            Faite
+                          </Button>
+                        </form>
+                        <form action={updateSeanceStatut.bind(null, s.id, patientId, "Annulée")}>
+                          <Button size="sm" variant="ghost" type="submit">
+                            Annuler
+                          </Button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {fiche ? (
+                  <FicheSeanceCard fiche={fiche} />
+                ) : (
+                  s.contenu && <p className="whitespace-pre-line text-xs text-foreground/80">{s.contenu}</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                {s.notes && <p className="text-xs italic text-muted">{s.notes}</p>}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
