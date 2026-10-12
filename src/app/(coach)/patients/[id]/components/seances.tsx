@@ -34,6 +34,13 @@ const STATUT_VARIANT: Record<string, "success" | "warning" | "danger" | "default
   Annulée: "danger",
 };
 
+const STATUT_LABELS: Record<string, string> = {
+  Planifiée: "Marquer planifiée",
+  Faite: "Marquer faite",
+  Annulée: "Annuler",
+};
+const TOUS_STATUTS = ["Planifiée", "Faite", "Annulée"];
+
 export function SeancesSection({ patientId, seances }: { patientId: string; seances: SeanceItem[] }) {
   const action = addSeance.bind(null, patientId);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -112,20 +119,15 @@ export function SeancesSection({ patientId, seances }: { patientId: string; sean
                       </Badge>
                     )}
                     <Badge variant={STATUT_VARIANT[s.statut] ?? "muted"}>{s.statut}</Badge>
-                    {s.statut === "Planifiée" && (
-                      <div className="flex gap-1">
-                        <form action={updateSeanceStatut.bind(null, s.id, patientId, "Faite")}>
-                          <Button size="sm" variant="secondary" type="submit">
-                            Faite
+                    <div className="flex gap-1">
+                      {TOUS_STATUTS.filter((statutCible) => statutCible !== s.statut).map((statutCible) => (
+                        <form key={statutCible} action={updateSeanceStatut.bind(null, s.id, patientId, statutCible)}>
+                          <Button size="sm" variant={statutCible === "Faite" ? "secondary" : "ghost"} type="submit">
+                            {STATUT_LABELS[statutCible]}
                           </Button>
                         </form>
-                        <form action={updateSeanceStatut.bind(null, s.id, patientId, "Annulée")}>
-                          <Button size="sm" variant="ghost" type="submit">
-                            Annuler
-                          </Button>
-                        </form>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 </div>
 

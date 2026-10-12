@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import {
   addObjectif,
   toggleObjectif,
@@ -33,6 +33,37 @@ interface Objectif {
   atteint: boolean;
 }
 
+interface PlanningDraft {
+  rationale: string;
+  seances: SeancePlanifieeProposee[];
+}
+
+// Les onglets démontent leur contenu inactif (Radix Tabs), donc le state React d'un composant
+// est perdu quand le coach change d'onglet et revient. On sauvegarde le brouillon de planning
+// dans sessionStorage pour qu'il survive, le temps de l'onglet du navigateur.
+function planningDraftKey(objectifId: string) {
+  return `eapas:planning-draft:${objectifId}`;
+}
+
+function lireBrouillonPlanning(objectifId: string): PlanningDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(planningDraftKey(objectifId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      Array.isArray((parsed as Record<string, unknown>).seances)
+    ) {
+      return parsed as PlanningDraft;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function ObjectifCard({ patientId, objectif }: { patientId: string; objectif: Objectif }) {
   const planAction = suggererPlanningAction.bind(null, patientId);
   const [planState, planFormAction, planPending] = useActionState(planAction, initialPlanningState);
@@ -40,8 +71,25 @@ function ObjectifCard({ patientId, objectif }: { patientId: string; objectif: Ob
   const createAction = creerSeancesPlanifieesAction.bind(null, patientId);
   const [createState, createFormAction, createPending] = useActionState(createAction, initialState);
 
-  const [rows, setRows] = useState<SeancePlanifieeProposee[] | null>(null);
-  const [rationale, setRationale] = useState("");
+  const [rows, setRows] = useState<SeancePlanifieeProposee[] | null>(
+    () => lireBrouillonPlanning(objectif.id)?.seances ?? null
+  );
+  const [rationale, setRationale] = useState(() => lireBrouillonPlanning(objectif.id)?.rationale ?? "");
+
+  // Garde le brouillon à jour dans sessionStorage à chaque modification, et le supprime quand
+  // il n'y a plus de proposition en cours (annulée ou déjà créée).
+  useEffect(() => {
+    try {
+      if (rows && rows.length > 0) {
+        window.sessionStorage.setItem(planningDraftKey(objectif.id), JSON.stringify({ rationale, seances: rows }));
+      } else {
+        window.sessionStorage.removeItem(planningDraftKey(objectif.id));
+      }
+    } catch {
+      // Stockage indisponible (navigation privée, etc.) — tant pis, le brouillon ne survivra
+      // pas au changement d'onglet, mais la fonctionnalité reste utilisable.
+    }
+  }, [rows, rationale, objectif.id]);
 
   // Dérive l'état local à partir du résultat de l'action pendant le rendu plutôt que dans un
   // effet. Rien n'est créé tant que le coach n'a pas cliqué sur « Créer ces séances ».
