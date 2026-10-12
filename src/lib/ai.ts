@@ -213,3 +213,103 @@ export async function genererObjectifSMART({
 
   return parseObjectifSuggestion(parsed);
 }
+
+const PLANNING_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) / coach
+nutrition indépendant. Tu l'aides à planifier les prochaines séances d'un patient, à partir d'un objectif SMART déjà
+validé par le coach et du profil du patient (bilan clinique initial obligatoire, déjà vérifié par l'appelant).
+
+Règles impératives, toujours respectées :
+- Tu proposes, le coach décide. Rien n'est créé dans le dossier du patient sans relecture et validation explicite
+  du coach — tu ne fais que proposer une liste, qu'il pourra modifier ou raccourcir avant de créer quoi que ce soit.
+- Ne propose JAMAIS plus de 8 séances, et ne dépasse jamais les 3 prochaines semaines à partir de la date du jour
+  donnée. Ce n'est qu'un premier lot : la suite sera redemandée plus tard, au fil du suivi — n'essaie pas de
+  planifier tout le programme d'un coup.
+- Adapte la fréquence et l'intensité au profil fourni (âge, limitations, pathologie, dernier bilan clinique). En cas
+  de risque de chute (TUG > 12s) ou de profil fragile, reste prudent sur la fréquence et la progression.
+- Pour chaque séance, donne uniquement : une date et heure réaliste (jours ouvrés ou weekend selon ce qui est
+  usuel, à heure fixe raisonnable), un type court (ex: "Renforcement doux", "Cardio léger", "Point d'étape"), et
+  une note d'UNE ligne (pas de détail d'exercices — ça, c'est le rôle d'un autre assistant, séance par séance,
+  plus tard).
+- Termine si pertinent par une séance "Point d'étape" ou "Bilan intermédiaire" en fin de période.
+- Tu ne poses aucun diagnostic médical et n'inventes aucun chiffre nutritionnel.
+- Réponds UNIQUEMENT avec du JSON brut valide, sans texte autour, sans balises de code, en suivant exactement le
+  schéma donné dans la demande.`;
+
+const PLANNING_SCHEMA = `{
+  "rationale": string (une phrase expliquant brièvement la logique du planning proposé),
+  "seances": [
+    {
+      "dateHeure": string (format AAAA-MM-JJTHH:MM, ex: "2026-10-14T10:00"),
+      "type": string (court, ex: "Renforcement doux"),
+      "note": string (une ligne, ex: "Prise de repères, intensité modérée")
+    }
+  ] (2 à 8 séances maximum, sur 3 semaines maximum à partir de la date du jour)
+}`;
+
+export interface GenererPlanningParams {
+  /** Contexte patient déjà anonymisé (pas de nom, pas de coordonnées) assemblé par l'appelant. */
+  patientContext: string;
+  /** Formulation SMART de l'objectif déjà validé par le coach. */
+  objectifTexteSMART: string;
+}
+
+export interface SeancePlanifieeSuggestion {
+  dateHeure: string;
+  type: string;
+  note: string;
+}
+
+export interface PlanningSuggestion {
+  rationale: string;
+  seances: SeancePlanifieeSuggestion[];
+}
+
+function estDateHeureValide(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v) && !Number.isNaN(new Date(v).getTime());
+}
+
+function parsePlanningSuggestion(parsed: unknown): PlanningSuggestion {
+  if (typeof parsed !== "object" || parsed === null || !("seances" in parsed) || !Array.isArray((parsed as Record<string, unknown>).seances)) {
+    throw new Error("La réponse de l'assistant IA ne correspond pas au format attendu.");
+  }
+  const rationaleRaw = (parsed as Record<string, unknown>).rationale;
+  const rationale = typeof rationaleRaw === "string" ? rationaleRaw : "";
+
+  const seances: SeancePlanifieeSuggestion[] = [];
+  for (const item of (parsed as Record<string, unknown>).seances as unknown[]) {
+    if (typeof item !== "object" || item === null) continue;
+    const dateHeure = (item as Record<string, unknown>).dateHeure;
+    const type = (item as Record<string, unknown>).type;
+    const note = (item as Record<string, unknown>).note;
+    if (!estDateHeureValide(dateHeure)) continue;
+    if (typeof type !== "string" || !type) continue;
+    seances.push({ dateHeure, type, note: typeof note === "string" ? note : "" });
+  }
+
+  if (seances.length === 0) {
+    throw new Error("L'assistant IA n'a proposé aucune séance exploitable. Réessaie.");
+  }
+
+  return { rationale, seances: seances.slice(0, 8) };
+}
+
+export async function genererPlanningSeances({
+  patientContext,
+  objectifTexteSMART,
+}: GenererPlanningParams): Promise<PlanningSuggestion> {
+  const maintenant = new Date();
+  const aujourdhui = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(maintenant);
+  const heureActuelle = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Europe/Paris",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(maintenant);
+
+  const parsed = await appelerClaudeJSON({
+    system: PLANNING_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nObjectif SMART déjà validé par le coach : ${objectifTexteSMART}\n\nDate et heure actuelles : ${aujourdhui} ${heureActuelle}\n\nSchéma JSON attendu :\n${PLANNING_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
+    maxTokens: 3000,
+  });
+
+  return parsePlanningSuggestion(parsed);
+}

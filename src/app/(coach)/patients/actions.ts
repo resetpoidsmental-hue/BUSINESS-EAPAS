@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { generateAccessCode, hashAccessCode } from "@/lib/auth";
 import { calculerScoreIPAQ, calculerBilanNutritionnel, type Sexe } from "@/lib/calculs";
-import { genererObjectifSMART, assistantIADisponible } from "@/lib/ai";
+import { genererObjectifSMART, genererPlanningSeances, assistantIADisponible } from "@/lib/ai";
 import { buildPatientContext } from "@/lib/patient-context";
 
 export interface ActionState {
@@ -240,6 +240,92 @@ export async function suggererObjectifSMARTAction(
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
   }
+}
+
+export interface SeancePlanifieeProposee {
+  dateHeure: string;
+  type: string;
+  note: string;
+}
+
+export interface SuggestionPlanningState {
+  error?: string;
+  bilanManquant?: boolean;
+  rationale?: string;
+  seances?: SeancePlanifieeProposee[];
+}
+
+export async function suggererPlanningAction(
+  patientId: string,
+  _prev: SuggestionPlanningState,
+  formData: FormData
+): Promise<SuggestionPlanningState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  const objectifTexteSMART = str(formData, "objectifTexteSMART");
+  if (!objectifTexteSMART) return { error: "Objectif manquant." };
+
+  const bilan = await prisma.bilanClinique.findFirst({ where: { patientId } });
+  if (!bilan) return { bilanManquant: true };
+
+  try {
+    const patientContext = await buildPatientContext(patientId);
+    const planning = await genererPlanningSeances({ patientContext, objectifTexteSMART });
+    return { rationale: planning.rationale, seances: planning.seances };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
+}
+
+export async function creerSeancesPlanifieesAction(
+  patientId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const seancesRaw = str(formData, "seancesJson");
+  if (!seancesRaw) return { error: "Rien à créer." };
+
+  let items: unknown;
+  try {
+    items = JSON.parse(seancesRaw);
+  } catch {
+    return { error: "Données invalides, impossible de créer les séances." };
+  }
+  if (!Array.isArray(items)) return { error: "Données invalides, impossible de créer les séances." };
+
+  const aCreer: { date: Date; type: string | null; notes: string | null }[] = [];
+  for (const item of items) {
+    if (typeof item !== "object" || item === null) continue;
+    const dateHeureRaw = (item as Record<string, unknown>).dateHeure;
+    const typeRaw = (item as Record<string, unknown>).type;
+    const noteRaw = (item as Record<string, unknown>).note;
+    if (typeof dateHeureRaw !== "string") continue;
+    const d = new Date(dateHeureRaw);
+    if (Number.isNaN(d.getTime())) continue;
+    aCreer.push({
+      date: d,
+      type: typeof typeRaw === "string" && typeRaw ? typeRaw : null,
+      notes: typeof noteRaw === "string" && noteRaw ? noteRaw : null,
+    });
+  }
+
+  if (aCreer.length === 0) return { error: "Aucune séance valide à créer." };
+
+  await prisma.seance.createMany({
+    data: aCreer.map((s) => ({
+      patientId,
+      date: s.date,
+      type: s.type,
+      format: "Individuel",
+      statut: "Planifiée",
+      notes: s.notes,
+    })),
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+  return { success: `${aCreer.length} séance${aCreer.length > 1 ? "s" : ""} créée${aCreer.length > 1 ? "s" : ""}.` };
 }
 
 export async function addIPAQ(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
