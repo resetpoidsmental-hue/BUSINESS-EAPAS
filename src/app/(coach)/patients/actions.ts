@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { generateAccessCode, hashAccessCode } from "@/lib/auth";
 import { calculerScoreIPAQ, calculerBilanNutritionnel, type Sexe } from "@/lib/calculs";
+import { genererObjectifSMART, assistantIADisponible } from "@/lib/ai";
+import { buildPatientContext } from "@/lib/patient-context";
 
 export interface ActionState {
   error?: string;
@@ -211,6 +213,33 @@ export async function addObjectif(patientId: string, _prev: ActionState, formDat
 export async function toggleObjectif(objectifId: string, patientId: string, atteint: boolean) {
   await prisma.objectifSMART.update({ where: { id: objectifId }, data: { atteint } });
   revalidatePath(`/patients/${patientId}`);
+}
+
+export interface SuggestionObjectifState {
+  error?: string;
+  texteSMART?: string;
+  dateCible?: string;
+}
+
+export async function suggererObjectifSMARTAction(
+  patientId: string,
+  _prev: SuggestionObjectifState,
+  formData: FormData
+): Promise<SuggestionObjectifState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  const texteOriginal = str(formData, "texteOriginal");
+  if (!texteOriginal) return { error: "Note d'abord l'objectif dans les mots du patient." };
+
+  try {
+    const patientContext = await buildPatientContext(patientId);
+    const suggestion = await genererObjectifSMART({ patientContext, texteOriginal });
+    return { texteSMART: suggestion.texteSMART, dateCible: suggestion.dateCible ?? undefined };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
 }
 
 export async function addIPAQ(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {

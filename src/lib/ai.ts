@@ -84,24 +84,24 @@ function messageErreurAPI(e: unknown): string {
   return "Erreur inattendue lors de l'appel à l'assistant IA.";
 }
 
-export async function genererFicheSeance({
-  patientContext,
-  consigne,
-}: GenererFicheSeanceParams): Promise<FicheSeance> {
+async function appelerClaudeJSON({
+  system,
+  userContent,
+  maxTokens,
+}: {
+  system: string;
+  userContent: string;
+  maxTokens: number;
+}): Promise<unknown> {
   const client = getClient();
 
   let message;
   try {
     message = await client.messages.create({
       model: "claude-sonnet-5-5",
-      max_tokens: 8000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Profil du patient (anonymisé) :\n${patientContext}\n\nDemande du coach : ${consigne}\n\nSchéma JSON attendu :\n${FICHE_SEANCE_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
-        },
-      ],
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: userContent }],
     });
   } catch (e) {
     throw new Error(messageErreurAPI(e));
@@ -118,16 +118,95 @@ export async function genererFicheSeance({
     .replace(/\s*```$/, "")
     .trim();
 
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(cleaned);
+    return JSON.parse(cleaned);
   } catch {
     throw new Error("L'assistant IA n'a pas renvoyé un JSON valide. Réessaie, ou reformule ta demande.");
   }
+}
+
+export async function genererFicheSeance({
+  patientContext,
+  consigne,
+}: GenererFicheSeanceParams): Promise<FicheSeance> {
+  const parsed = await appelerClaudeJSON({
+    system: SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nDemande du coach : ${consigne}\n\nSchéma JSON attendu :\n${FICHE_SEANCE_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
+    maxTokens: 8000,
+  });
 
   if (!isFicheSeance(parsed)) {
     throw new Error("La réponse de l'assistant IA ne correspond pas au format attendu.");
   }
 
   return parsed;
+}
+
+const OBJECTIF_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) / coach
+nutrition indépendant. Tu l'aides à traduire l'objectif exprimé par un patient, dans ses propres mots, en un
+objectif SMART (Spécifique, Mesurable, Atteignable, Réaliste, Temporellement défini).
+
+Règles impératives, toujours respectées :
+- Tu proposes, le coach décide. Rien n'est enregistré dans le dossier du patient sans relecture et validation
+  explicite du coach.
+- Reste fidèle à l'intention du patient : ne change pas la nature de son objectif, rends-le seulement concret,
+  mesurable et borné dans le temps.
+- Adapte l'ambition et l'échéance au profil fourni (âge, limitations, pathologie, dernier bilan clinique s'il
+  existe). Si aucun bilan clinique n'est disponible, reste particulièrement prudent dans l'échéance proposée
+  (plutôt plus longue que trop courte) et dans l'intensité implicite de l'objectif.
+- Tu ne poses aucun diagnostic médical et n'inventes aucun chiffre nutritionnel.
+- Réponds UNIQUEMENT avec du JSON brut valide, sans texte autour, sans balises de code, en suivant exactement le
+  schéma donné dans la demande.`;
+
+const OBJECTIF_SCHEMA = `{
+  "texteSMART": string (une phrase, l'objectif reformulé en SMART),
+  "dateCible": string (format AAAA-MM-JJ, échéance réaliste calculée à partir de la date du jour donnée)
+}`;
+
+export interface GenererObjectifSMARTParams {
+  /** Contexte patient déjà anonymisé (pas de nom, pas de coordonnées) assemblé par l'appelant. */
+  patientContext: string;
+  /** Objectif du patient, dans ses propres mots. */
+  texteOriginal: string;
+}
+
+export interface ObjectifSMARTSuggestion {
+  texteSMART: string;
+  dateCible: string | null;
+}
+
+function estDateValide(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(new Date(v).getTime());
+}
+
+function parseObjectifSuggestion(parsed: unknown): ObjectifSMARTSuggestion {
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("texteSMART" in parsed) ||
+    typeof (parsed as Record<string, unknown>).texteSMART !== "string" ||
+    !(parsed as Record<string, unknown>).texteSMART
+  ) {
+    throw new Error("La réponse de l'assistant IA ne correspond pas au format attendu.");
+  }
+  const dateCibleRaw = (parsed as Record<string, unknown>).dateCible;
+  return {
+    texteSMART: (parsed as { texteSMART: string }).texteSMART,
+    dateCible: estDateValide(dateCibleRaw) ? dateCibleRaw : null,
+  };
+}
+
+export async function genererObjectifSMART({
+  patientContext,
+  texteOriginal,
+}: GenererObjectifSMARTParams): Promise<ObjectifSMARTSuggestion> {
+  const aujourdhui = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
+
+  const parsed = await appelerClaudeJSON({
+    system: OBJECTIF_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nDate du jour : ${aujourdhui}\n\nObjectif du patient, dans ses mots : « ${texteOriginal} »\n\nSchéma JSON attendu :\n${OBJECTIF_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
+    maxTokens: 2000,
+  });
+
+  return parseObjectifSuggestion(parsed);
 }
