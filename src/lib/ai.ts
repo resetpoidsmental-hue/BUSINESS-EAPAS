@@ -107,8 +107,8 @@ export async function genererFicheSeance({
     throw new Error(messageErreurAPI(e));
   }
 
-  const block = message.content[0];
-  if (!block || block.type !== "text") {
+  const block = message.content.find((b) => b.type === "text");
+  if (!block) {
     throw new Error("Réponse inattendue de l'assistant IA.");
   }
 
