@@ -154,12 +154,15 @@ Règles impératives, toujours respectées :
 - Adapte l'ambition et l'échéance au profil fourni (âge, limitations, pathologie, dernier bilan clinique s'il
   existe). Si aucun bilan clinique n'est disponible, reste particulièrement prudent dans l'échéance proposée
   (plutôt plus longue que trop courte) et dans l'intensité implicite de l'objectif.
+- Sois concis : "texteSMART" tient en UNE seule phrase courte (15-20 mots maximum), sans énumération ni
+  sous-critères entre parenthèses. Garde uniquement l'essentiel : l'action concrète, la mesure/quantité, et
+  l'échéance — pas de justification ni de détail du contexte dans le texte lui-même.
 - Tu ne poses aucun diagnostic médical et n'inventes aucun chiffre nutritionnel.
 - Réponds UNIQUEMENT avec du JSON brut valide, sans texte autour, sans balises de code, en suivant exactement le
   schéma donné dans la demande.`;
 
 const OBJECTIF_SCHEMA = `{
-  "texteSMART": string (une phrase, l'objectif reformulé en SMART),
+  "texteSMART": string (UNE phrase courte, 15-20 mots max, ex: "Perdre 6 kg d'ici le 29 mars 2027, par une activité physique régulière"),
   "dateCible": string (format AAAA-MM-JJ, échéance réaliste calculée à partir de la date du jour donnée)
 }`;
 
