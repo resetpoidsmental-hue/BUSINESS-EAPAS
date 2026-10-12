@@ -23,6 +23,18 @@ export function formatDateTime(date: Date | string | null | undefined) {
   }).format(d);
 }
 
+export function formatHeure(date: Date | string | null | undefined) {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+/** Clé "AAAA-MM-JJ" d'une date dans le fuseau du coach (le serveur tourne en UTC). */
+export function dateKeyParis(date: Date | string) {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
 export function formatCurrency(amount: number | null | undefined) {
   if (amount === null || amount === undefined) return "—";
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(amount);

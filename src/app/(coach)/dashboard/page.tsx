@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Users, CalendarClock, AlertTriangle, Target, ArrowRight, TrendingUp } from "lucide-react";
+import { Users, CalendarClock, AlertTriangle, Target, ArrowRight, TrendingUp, CalendarDays } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDateTime, formatDate } from "@/lib/utils";
+import { formatDateTime, formatDate, formatHeure, dateKeyParis } from "@/lib/utils";
 
 const STATUT_ORDER = ["Bilan initial à faire", "Suivi en cours", "Bilan final fait", "Suivi terminé"] as const;
 const STATUT_COLOR: Record<string, string> = {
@@ -17,14 +17,21 @@ const STATUT_COLOR: Record<string, string> = {
 export default async function DashboardPage() {
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+  const unJourAvant = new Date(now.getTime() - 24 * 3600 * 1000);
+  const unJourApres = new Date(now.getTime() + 24 * 3600 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 3600 * 1000);
 
-  const [totalPatients, actifs, parStatut, prochainesSeances, seancesRecentes, objectifsEnRetard, patients] =
+  const [totalPatients, actifs, parStatut, seancesAutourAujourdhui, prochainesSeances, seancesRecentes, objectifsEnRetard, patients] =
     await Promise.all([
       prisma.patient.count(),
       prisma.patient.count({ where: { statutSuivi: "Suivi en cours" } }),
       prisma.patient.groupBy({ by: ["statutSuivi"], _count: { _all: true } }),
+      prisma.seance.findMany({
+        where: { date: { gte: unJourAvant, lte: unJourApres }, statut: { not: "Annulée" } },
+        include: { patient: { select: { id: true, nom: true, prenom: true } } },
+        orderBy: { date: "asc" },
+      }),
       prisma.seance.findMany({
         where: { date: { gte: now, lte: in7Days }, statut: "Planifiée" },
         include: { patient: { select: { nom: true, prenom: true } } },
@@ -47,6 +54,9 @@ export default async function DashboardPage() {
       }),
     ]);
 
+  const aujourdhuiKey = dateKeyParis(now);
+  const seancesAujourdhui = seancesAutourAujourdhui.filter((s) => dateKeyParis(s.date) === aujourdhuiKey);
+
   const bilansEnRetard = patients.filter(
     (p) => p.statutSuivi === "Bilan initial à faire" && p.createdAt < sevenDaysAgo
   );
@@ -64,6 +74,33 @@ export default async function DashboardPage() {
   return (
     <div>
       <PageHeader title="Tableau de bord" description="Vue d'ensemble de ton activité." />
+
+      <Card className="mb-6 border-primary/30 bg-primary/5">
+        <CardContent className="p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Aujourd&apos;hui</h2>
+            <Badge variant="default">{seancesAujourdhui.length}</Badge>
+          </div>
+          {seancesAujourdhui.length === 0 ? (
+            <p className="text-sm text-muted">Aucun rendez-vous aujourd&apos;hui.</p>
+          ) : (
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {seancesAujourdhui.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/patients/${s.patient.id}`}
+                  className="flex items-center gap-2 text-sm hover:underline"
+                >
+                  <span className="font-semibold text-primary">{formatHeure(s.date)}</span>
+                  <span>{s.patient.prenom} {s.patient.nom}</span>
+                  {s.statut === "Faite" && <span className="text-xs text-muted">(faite)</span>}
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat icon={Users} label="Patients & clients" value={String(totalPatients)} />
