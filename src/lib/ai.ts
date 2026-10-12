@@ -94,7 +94,7 @@ export async function genererFicheSeance({
   try {
     message = await client.messages.create({
       model: "claude-sonnet-5-5",
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [
         {
