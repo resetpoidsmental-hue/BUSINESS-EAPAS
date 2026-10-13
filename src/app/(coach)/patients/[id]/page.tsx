@@ -33,13 +33,17 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       bilansNutrition: { orderBy: { date: "desc" } },
       seances: { orderBy: { date: "desc" } },
       journalEntrees: { orderBy: { date: "desc" }, take: 30 },
+      modelesRation: { orderBy: { updatedAt: "desc" } },
       patientAccess: true,
     },
   });
 
   if (!patient) notFound();
 
-  const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+  const [settings, modelesBibliotheque] = await Promise.all([
+    prisma.settings.findUnique({ where: { id: 1 } }),
+    prisma.modeleRation.findMany({ where: { patientId: null }, orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
+  ]);
   const age = ageFromDate(patient.dateNaissance);
 
   return (
@@ -139,6 +143,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
             bilans={patient.bilansNutrition}
             defaultAge={age}
             defaultSexe={patient.genre}
+            modeles={patient.modelesRation.map((m) => ({
+              id: m.id,
+              nom: m.nom,
+              targetKcal: m.targetKcal,
+              partageLe: m.partageLe,
+              updatedAt: m.updatedAt,
+            }))}
+            modelesBibliotheque={modelesBibliotheque}
           />
         </TabsContent>
 
@@ -160,6 +172,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
               id: j.id,
               date: j.date,
               repas: j.repas,
+              repasStructure: j.repasStructure,
               activite: j.activite,
               dureeMinutes: j.dureeMinutes,
               heure: j.heure,

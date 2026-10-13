@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatRepasStructureResume } from "@/lib/categories-ration";
 import { AlertTriangle, Sparkles, NotebookPen, Target, Send } from "lucide-react";
 
 const initialMessageState: SuggestionMessageState = {};
@@ -34,6 +35,7 @@ interface JournalEntreeVue {
   id: string;
   date: Date;
   repas: string | null;
+  repasStructure: string | null;
   activite: string | null;
   dureeMinutes: number | null;
   heure: string | null;
@@ -200,6 +202,7 @@ export function SuiviSection({
               {journalEntrees.slice(0, 7).map((j) => (
                 <div key={j.id} className="flex flex-col gap-1 py-2 text-sm">
                   <span className="text-xs font-semibold text-muted">{formatDateTime(j.date)}</span>
+                  {formatRepasStructureResume(j.repasStructure) && <p>{formatRepasStructureResume(j.repasStructure)}</p>}
                   {j.repas && <p>Repas/boissons : {j.repas}</p>}
                   {j.activite && (
                     <p>

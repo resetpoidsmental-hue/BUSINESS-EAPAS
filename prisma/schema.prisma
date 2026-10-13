@@ -70,6 +70,7 @@ model Patient {
   patientAccess    PatientAccess?
   journalEntrees   JournalEntree[]
   messages         MessageCoach[]
+  modelesRation    ModeleRation[]
 }
 
 model EntretienInitial {
@@ -258,17 +259,33 @@ model SAVTicket {
 }
 
 model JournalEntree {
-  id            String   @id @default(cuid())
-  patientId     String
-  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  date          DateTime @default(now())
-  repas         String?
-  activite      String?
-  dureeMinutes  Int?
-  heure         String?
-  motivation    Int?
-  notes         String?
-  createdAt     DateTime @default(now())
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date            DateTime @default(now())
+  repas           String?
+  repasStructure  String?
+  activite        String?
+  dureeMinutes    Int?
+  heure           String?
+  motivation      Int?
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+model ModeleRation {
+  id            String    @id @default(cuid())
+  nom           String
+  targetKcal    Int
+  ration        String
+  repartition   String
+  menuType      String
+  patientId     String?
+  patient       Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  sourceNom     String?
+  partageLe     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model MessageCoach {

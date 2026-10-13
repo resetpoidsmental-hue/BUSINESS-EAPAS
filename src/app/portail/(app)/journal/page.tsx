@@ -2,6 +2,7 @@ import { getPatientSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
+import { formatRepasStructureResume } from "@/lib/categories-ration";
 import { JournalForm } from "./journal-form";
 
 export default async function PortailJournalPage() {
@@ -35,6 +36,7 @@ export default async function PortailJournalPage() {
               {entrees.map((e) => (
                 <div key={e.id} className="flex flex-col gap-1 py-3 text-sm">
                   <span className="text-xs font-semibold text-muted">{formatDate(e.date)}</span>
+                  {formatRepasStructureResume(e.repasStructure) && <p>{formatRepasStructureResume(e.repasStructure)}</p>}
                   {e.repas && <p>Repas/boissons : {e.repas}</p>}
                   {e.activite && (
                     <p>

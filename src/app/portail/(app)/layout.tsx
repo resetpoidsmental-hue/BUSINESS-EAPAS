@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Activity, FileText, LogOut, NotebookPen } from "lucide-react";
+import { LayoutDashboard, Activity, FileText, LogOut, NotebookPen, UtensilsCrossed } from "lucide-react";
 import { getPatientSession, destroyPatientSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { initials } from "@/lib/utils";
@@ -44,6 +44,7 @@ export default async function PortailLayout({ children }: { children: React.Reac
         <nav className="mx-auto flex max-w-3xl gap-1 px-4 pb-2">
           <NavLink href="/portail" icon={LayoutDashboard} label="Mon suivi" />
           <NavLink href="/portail/journal" icon={NotebookPen} label="Mon journal" />
+          <NavLink href="/portail/nutrition" icon={UtensilsCrossed} label="Mon menu" />
           <NavLink href="/portail/bilans" icon={Activity} label="Mes bilans" />
           <NavLink href="/portail/factures" icon={FileText} label="Mes factures" />
         </nav>

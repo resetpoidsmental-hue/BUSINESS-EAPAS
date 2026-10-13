@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
+import { Plus, Sparkles } from "lucide-react";
 import { addBilanNutrition, type ActionState } from "../../actions";
+import { dupliquerModeleRationAction } from "../../../nutrition/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { calculerBilanNutritionnel, NIVEAUX_ACTIVITE, OBJECTIFS_PONDERAUX, type Sexe } from "@/lib/calculs";
 import { formatDate, formatNumber } from "@/lib/utils";
 
@@ -25,16 +29,33 @@ interface Bilan {
   hydratation: number;
 }
 
+interface ModeleRationItem {
+  id: string;
+  nom: string;
+  targetKcal: number;
+  partageLe: Date | null;
+  updatedAt: Date;
+}
+
+interface ModeleBibliothequeOption {
+  id: string;
+  nom: string;
+}
+
 export function NutritionPatientSection({
   patientId,
   bilans,
   defaultAge,
   defaultSexe,
+  modeles,
+  modelesBibliotheque,
 }: {
   patientId: string;
   bilans: Bilan[];
   defaultAge?: number | null;
   defaultSexe?: string | null;
+  modeles: ModeleRationItem[];
+  modelesBibliotheque: ModeleBibliothequeOption[];
 }) {
   const action = addBilanNutrition.bind(null, patientId);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -169,6 +190,73 @@ export function NutritionPatientSection({
           </TableBody>
         </Table>
       )}
+
+      <Card>
+        <CardContent className="flex flex-col gap-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold">Modèles de ration</p>
+            <Button asChild size="sm" variant="outline">
+              <Link
+                href={`/nutrition/rations/nouveau?patientId=${patientId}${bilans[0] ? `&targetKcal=${Math.round(bilans[0].apportCalorique)}` : ""}`}
+              >
+                <Plus className="h-3.5 w-3.5" /> Nouveau modèle pour ce patient
+              </Link>
+            </Button>
+          </div>
+
+          {modelesBibliotheque.length > 0 && (
+            <form action={dupliquerModeleRationAction} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] bg-surface-muted p-3">
+              <input type="hidden" name="patientId" value={patientId} />
+              <span className="text-xs text-muted">Depuis la bibliothèque :</span>
+              <select
+                name="modeleId"
+                required
+                defaultValue=""
+                className="h-9 flex-1 rounded-[var(--radius-sm)] border border-border bg-surface px-2 text-sm"
+              >
+                <option value="" disabled>
+                  Choisir un modèle…
+                </option>
+                {modelesBibliotheque.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nom}
+                  </option>
+                ))}
+              </select>
+              <Button type="submit" size="sm" variant="outline">
+                Attribuer
+              </Button>
+            </form>
+          )}
+
+          {modeles.length === 0 ? (
+            <p className="text-sm text-muted">Aucun modèle de ration pour ce patient pour le moment.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {modeles.map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/nutrition/rations/${m.id}`}
+                  className="flex items-center justify-between rounded-[var(--radius-sm)] border border-border p-3 text-sm hover:bg-surface-muted"
+                >
+                  <div>
+                    <p className="font-medium">{m.nom}</p>
+                    <p className="text-xs text-muted">{m.targetKcal} kcal/j · modifié le {formatDate(m.updatedAt)}</p>
+                  </div>
+                  <Badge variant={m.partageLe ? "success" : "muted"}>
+                    {m.partageLe ? `Envoyé le ${formatDate(m.partageLe)}` : "Non envoyé"}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <Sparkles className="h-3.5 w-3.5" /> Ouvre un modèle pour proposer un menu avec l&apos;IA à partir de la
+            ration validée.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

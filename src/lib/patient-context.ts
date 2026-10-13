@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { formatRepasStructureResume } from "@/lib/categories-ration";
 
 /** Contexte patient anonymisé (pas de nom, pas de coordonnées) à fournir à l'assistant IA. */
 export async function buildPatientContext(patientId: string): Promise<string> {
@@ -101,6 +102,8 @@ export async function buildSuiviContext(patientId: string): Promise<{ contexte: 
     lignes.push("\nJournal de bord rempli par le patient (7 derniers jours, dans ses propres mots) :");
     for (const j of journalRecent) {
       const parts = [j.date.toLocaleDateString("fr-FR")];
+      const repasStructure = formatRepasStructureResume(j.repasStructure);
+      if (repasStructure) parts.push(`repas : ${repasStructure}`);
       if (j.repas) parts.push(`repas/boissons : ${j.repas}`);
       if (j.activite) {
         const duree = j.dureeMinutes ? `${j.dureeMinutes} min` : null;

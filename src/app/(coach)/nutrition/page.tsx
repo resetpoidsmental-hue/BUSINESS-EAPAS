@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { BookOpen } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatDate, formatNumber, initials } from "@/lib/utils";
 import { CalculateurAutonome } from "./calculateur-autonome";
 
@@ -15,7 +17,17 @@ export default async function NutritionPage() {
 
   return (
     <div>
-      <PageHeader title="Nutrition" description="Calculateur rapide et suivi des clients nutrition." />
+      <PageHeader
+        title="Nutrition"
+        description="Calculateur rapide et suivi des clients nutrition."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/nutrition/rations">
+              <BookOpen className="h-4 w-4" /> Bibliothèque de rations
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="mb-8">
         <CalculateurAutonome />

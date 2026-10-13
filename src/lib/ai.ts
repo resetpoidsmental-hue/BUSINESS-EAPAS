@@ -403,3 +403,65 @@ export async function analyserSuivi(contexteSuivi: string): Promise<string> {
     maxTokens: 1500,
   });
 }
+
+const PROPOSITION_MENU_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé
+(EAPAS) / coach nutrition indépendant. Il a déjà construit et validé lui-même une ration alimentaire chiffrée
+(quantités par catégorie d'aliment, réparties par repas) pour son patient — cette ration contient déjà tous les
+chiffres nécessaires. Ta tâche est de proposer, pour chaque repas, une composition concrète (des plats, pas des
+instructions) qui respecte les catégories déjà allouées à ce repas.
+
+Règles impératives, toujours respectées :
+- Tu composes des REPAS, jamais des chiffres : aucune quantité, aucun gramme, aucune calorie, aucun pourcentage
+  dans ta réponse. Les quantités existent déjà dans la ration du coach, tu ne les répètes pas et n'en inventes
+  aucune nouvelle.
+- Pour chaque repas, les catégories d'aliments allouées (données ci-dessous) doivent se retrouver dans ta
+  proposition, sous forme de plats ou d'aliments concrets — jamais une catégorie supplémentaire non allouée à ce
+  repas, jamais une catégorie absente de ce repas.
+- Si des écarts sont signalés (catégories peu retrouvées dans le journal du patient), privilégie des idées de
+  plats qui aident à les intégrer plus naturellement, sans jamais le signaler explicitement au patient dans le
+  texte (reste naturel, pas de discours sur les manques).
+- C'est un BROUILLON : le coach le relira, le modifiera librement, et décide seul de l'envoyer ou non au patient.
+- Tu ne poses aucun diagnostic médical, ne donnes aucune consigne médicale.
+- Réponds UNIQUEMENT avec du JSON brut valide, sans texte autour, sans balises de code, au format :
+{
+  "pd": string (idées de plats pour le petit déjeuner, quelques lignes),
+  "dej": string (idées de plats pour le déjeuner),
+  "col": string (idées de plats pour la collation),
+  "din": string (idées de plats pour le dîner)
+}`;
+
+export interface GenererPropositionMenuParams {
+  /** Contexte patient déjà anonymisé assemblé par l'appelant. */
+  patientContext: string;
+  /** Texte décrivant, par repas, les catégories allouées (labels), sans aucun chiffre. */
+  categoriesParRepas: string;
+  /** Texte décrivant les écarts observés dans le journal (ou "Aucun écart notable"). */
+  ecartsTexte: string;
+}
+
+export interface PropositionMenu {
+  pd: string;
+  dej: string;
+  col: string;
+  din: string;
+}
+
+function parsePropositionMenu(parsed: unknown): PropositionMenu {
+  const p = (parsed ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  return { pd: str(p.pd), dej: str(p.dej), col: str(p.col), din: str(p.din) };
+}
+
+export async function genererPropositionMenu({
+  patientContext,
+  categoriesParRepas,
+  ecartsTexte,
+}: GenererPropositionMenuParams): Promise<PropositionMenu> {
+  const parsed = await appelerClaudeJSON({
+    system: PROPOSITION_MENU_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nCatégories déjà allouées par repas (ne pas chiffrer, ne pas en ajouter) :\n${categoriesParRepas}\n\nÉcarts observés dans le journal du patient sur les 7 derniers jours :\n${ecartsTexte}\n\nPropose le menu.`,
+    maxTokens: 2000,
+  });
+
+  return parsePropositionMenu(parsed);
+}

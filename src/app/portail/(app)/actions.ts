@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getPatientSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { MEAL_KEYS, type MealKey } from "@/lib/categories-ration";
 
 export async function marquerMaterielVu(seanceId: string) {
   const session = await getPatientSession();
@@ -39,6 +40,30 @@ function strOrNull(formData: FormData, key: string) {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+/** Parsing permissif : ne garde que les repas/catégories/portions valides, ignore le reste
+ * plutôt que de rejeter toute la saisie. */
+function parseRepasStructure(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+
+    const cleaned: Partial<Record<MealKey, Record<string, number>>> = {};
+    for (const meal of MEAL_KEYS) {
+      const mealPicks = (parsed as Record<string, unknown>)[meal];
+      if (typeof mealPicks !== "object" || mealPicks === null) continue;
+      const entries = Object.entries(mealPicks as Record<string, unknown>).filter(
+        ([, v]) => typeof v === "number" && v > 0
+      );
+      if (entries.length > 0) cleaned[meal] = Object.fromEntries(entries) as Record<string, number>;
+    }
+
+    return Object.keys(cleaned).length > 0 ? JSON.stringify(cleaned) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function ajouterJournalAction(
   _prev: JournalActionState,
   formData: FormData
@@ -46,14 +71,14 @@ export async function ajouterJournalAction(
   const session = await getPatientSession();
   if (!session) return { error: "Session expirée, reconnecte-toi." };
 
-  const repas = strOrNull(formData, "repas");
+  const repasStructure = parseRepasStructure(strOrNull(formData, "repasStructureJson"));
   const activite = strOrNull(formData, "activite");
   const heure = strOrNull(formData, "heure");
   const notes = strOrNull(formData, "notes");
   const dureeRaw = strOrNull(formData, "dureeMinutes");
   const motivationRaw = strOrNull(formData, "motivation");
 
-  if (!repas && !activite && !notes) {
+  if (!repasStructure && !activite && !notes) {
     return { error: "Remplis au moins un champ avant d'enregistrer." };
   }
 
@@ -61,7 +86,7 @@ export async function ajouterJournalAction(
     data: {
       patientId: session.patientId,
       date: new Date(),
-      repas,
+      repasStructure,
       activite,
       heure,
       notes,
