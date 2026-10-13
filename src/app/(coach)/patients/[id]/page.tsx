@@ -14,6 +14,7 @@ import { NutritionPatientSection } from "./components/nutrition-patient";
 import { SeancesSection } from "./components/seances";
 import { PortailAccess } from "./components/portail-access";
 import { IdentiteForm } from "./components/identite-form";
+import { SuiviSection } from "./components/suivi";
 
 function toDateInput(d: Date | null) {
   return d ? d.toISOString().slice(0, 10) : null;
@@ -31,6 +32,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       ipaqEvaluations: { orderBy: { date: "desc" } },
       bilansNutrition: { orderBy: { date: "desc" } },
       seances: { orderBy: { date: "desc" } },
+      journalEntrees: { orderBy: { date: "desc" }, take: 30 },
       patientAccess: true,
     },
   });
@@ -74,6 +76,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           <TabsTrigger value="ipaq">IPAQ</TabsTrigger>
           <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
           <TabsTrigger value="seances">Séances</TabsTrigger>
+          <TabsTrigger value="suivi">Suivi</TabsTrigger>
           <TabsTrigger value="portail">Portail</TabsTrigger>
         </TabsList>
 
@@ -141,6 +144,34 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
 
         <TabsContent value="seances">
           <SeancesSection patientId={patient.id} seances={patient.seances} />
+        </TabsContent>
+
+        <TabsContent value="suivi">
+          <SuiviSection
+            patientId={patient.id}
+            seancesManquees={patient.seances
+              .filter((s) => s.statut === "Planifiée" && s.date < new Date())
+              .map((s) => ({ id: s.id, date: s.date, type: s.type }))}
+            ressentisRecents={patient.seances
+              .filter((s) => s.statut === "Faite" && s.borgRessenti !== null)
+              .slice(0, 4)
+              .map((s) => ({ date: s.date, borgRessenti: s.borgRessenti as number }))}
+            journalEntrees={patient.journalEntrees.map((j) => ({
+              id: j.id,
+              date: j.date,
+              repas: j.repas,
+              activite: j.activite,
+              dureeMinutes: j.dureeMinutes,
+              heure: j.heure,
+              motivation: j.motivation,
+              notes: j.notes,
+            }))}
+            prochaineEcheance={
+              patient.objectifs
+                .filter((o) => !o.atteint && o.dateCible)
+                .sort((a, b) => a.dateCible!.getTime() - b.dateCible!.getTime())[0]?.dateCible ?? null
+            }
+          />
         </TabsContent>
 
         <TabsContent value="portail">

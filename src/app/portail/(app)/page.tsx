@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { Target, CalendarDays, Backpack } from "lucide-react";
-import { marquerMaterielVu } from "./actions";
+import { Target, CalendarDays, Backpack, MessageCircle } from "lucide-react";
+import { marquerMaterielVu, marquerMessageLu } from "./actions";
 
 export default async function PortailDashboard() {
   const session = await getPatientSession();
@@ -13,12 +13,14 @@ export default async function PortailDashboard() {
     include: {
       objectifs: { orderBy: { createdAt: "desc" } },
       seances: { where: { date: { gte: new Date() }, statut: "Planifiée" }, orderBy: { date: "asc" }, take: 5 },
+      messages: { where: { lu: false }, orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
 
   if (!patient) return null;
 
   const prochaineAvecMateriel = patient.seances.find((s) => s.materielNecessaire && !s.materielVu);
+  const messageNonLu = patient.messages[0];
 
   return (
     <div className="flex flex-col gap-6">
@@ -35,6 +37,23 @@ export default async function PortailDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {messageNonLu && (
+        <Card className="border-primary">
+          <CardContent className="flex gap-3 p-5">
+            <MessageCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold">Un message de ton coach</p>
+              <p className="whitespace-pre-line text-sm text-foreground">{messageNonLu.contenu}</p>
+              <form action={marquerMessageLu.bind(null, messageNonLu.id)}>
+                <button type="submit" className="w-fit text-xs font-semibold text-primary hover:underline">
+                  J&rsquo;ai lu
+                </button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {prochaineAvecMateriel && (
         <Card className="border-primary">

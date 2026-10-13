@@ -125,6 +125,38 @@ async function appelerClaudeJSON({
   }
 }
 
+/** Comme appelerClaudeJSON, mais pour une réponse en texte libre (pas de schéma JSON à respecter). */
+async function appelerClaudeTexte({
+  system,
+  userContent,
+  maxTokens,
+}: {
+  system: string;
+  userContent: string;
+  maxTokens: number;
+}): Promise<string> {
+  const client = getClient();
+
+  let message;
+  try {
+    message = await client.messages.create({
+      model: "claude-sonnet-5-5",
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: userContent }],
+    });
+  } catch (e) {
+    throw new Error(messageErreurAPI(e));
+  }
+
+  const block = message.content.find((b) => b.type === "text");
+  if (!block || !block.text.trim()) {
+    throw new Error("Réponse inattendue de l'assistant IA.");
+  }
+
+  return block.text.trim();
+}
+
 export async function genererFicheSeance({
   patientContext,
   consigne,
@@ -312,4 +344,62 @@ export async function genererPlanningSeances({
   });
 
   return parsePlanningSuggestion(parsed);
+}
+
+const MESSAGE_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) / coach
+nutrition indépendant. Tu rédiges un court message d'attention que le coach pourra envoyer à son patient, qui n'a
+pas confirmé une séance planifiée (ni "faite", ni "annulée").
+
+Règles impératives, toujours respectées :
+- Le message est un BROUILLON : le coach le relira, pourra le modifier, et décide seul de l'envoyer ou non.
+- Ton chaleureux, bref (2 à 4 phrases), jamais culpabilisant. Tu ne devines jamais la raison de l'absence (pas
+  d'hypothèse sur une maladie, une rechute, etc.) — reste neutre et ouvert.
+- Tu ne poses aucun diagnostic médical, ne donnes aucune consigne médicale, n'inventes aucun chiffre.
+- Pas de formule de politesse exagérée ni de ton infantilisant. Signe simplement, sans emoji.
+- Réponds UNIQUEMENT avec le texte du message, rien d'autre (pas de guillemets, pas d'explication autour).`;
+
+export interface GenererMessageAttentionParams {
+  /** Contexte patient déjà anonymisé assemblé par l'appelant. */
+  patientContext: string;
+  /** Date (format libre, ex: "6 octobre 2026") et type de la séance non confirmée. */
+  dateSeanceManquee: string;
+  typeSeanceManquee: string;
+}
+
+export async function genererMessageAttention({
+  patientContext,
+  dateSeanceManquee,
+  typeSeanceManquee,
+}: GenererMessageAttentionParams): Promise<string> {
+  return appelerClaudeTexte({
+    system: MESSAGE_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nSéance non confirmée : ${typeSeanceManquee} du ${dateSeanceManquee}.\n\nRédige le message.`,
+    maxTokens: 1000,
+  });
+}
+
+const SUIVI_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) / coach
+nutrition indépendant. Tu l'aides à repérer des signaux utiles dans le suivi récent d'un patient : séances
+manquées, tendance du ressenti d'effort, et journal de bord quotidien (repas/boissons, activité physique,
+motivation — rempli par le patient dans ses propres mots).
+
+Règles impératives, toujours respectées :
+- Tu donnes une LECTURE, pas une consigne : 3 à 5 phrases maximum, qui aident le coach à décider lui-même quoi
+  faire (contacter le patient, ajuster la prochaine séance, ne rien faire).
+- Tu ne poses aucun diagnostic médical.
+- Tu n'inventes JAMAIS de chiffre nutritionnel (calories, macronutriments, MET) à partir du texte du journal — tu
+  peux commenter qualitativement ce que le patient décrit (ex: "repas qui semblent équilibrés", "hydratation peu
+  mentionnée"), jamais produire de valeurs chiffrées.
+- Tu peux suggérer un ou deux conseils nutritionnels ou motivationnels qualitatifs pour la prochaine séance, jamais
+  prescriptifs, toujours présentés comme une piste à discuter avec le patient.
+- Tu ne contactes jamais le patient toi-même et ne proposes aucune action automatique.
+- Réponds UNIQUEMENT avec le texte de l'analyse, en prose, rien d'autre (pas de titre, pas de liste à puces, pas
+  de JSON).`;
+
+export async function analyserSuivi(contexteSuivi: string): Promise<string> {
+  return appelerClaudeTexte({
+    system: SUIVI_SYSTEM_PROMPT,
+    userContent: `Suivi récent du patient (anonymisé) :\n${contexteSuivi}\n\nDonne ta lecture.`,
+    maxTokens: 1500,
+  });
 }

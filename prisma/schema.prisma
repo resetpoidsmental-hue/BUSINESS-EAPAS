@@ -68,6 +68,8 @@ model Patient {
   factures         Facture[]
   savTickets       SAVTicket[]
   patientAccess    PatientAccess?
+  journalEntrees   JournalEntree[]
+  messages         MessageCoach[]
 }
 
 model EntretienInitial {
@@ -253,6 +255,29 @@ model SAVTicket {
   priorite    String    @default("Normale")
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
+}
+
+model JournalEntree {
+  id            String   @id @default(cuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  date          DateTime @default(now())
+  repas         String?
+  activite      String?
+  dureeMinutes  Int?
+  heure         String?
+  motivation    Int?
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model MessageCoach {
+  id         String   @id @default(cuid())
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  contenu    String
+  lu         Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
 
 model PatientAccess {

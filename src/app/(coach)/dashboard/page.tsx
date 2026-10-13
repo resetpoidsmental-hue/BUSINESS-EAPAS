@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 3600 * 1000);
 
-  const [totalPatients, actifs, parStatut, seancesAutourAujourdhui, prochainesSeances, seancesRecentes, objectifsEnRetard, patients] =
+  const [totalPatients, actifs, parStatut, seancesAutourAujourdhui, prochainesSeances, seancesRecentes, objectifsEnRetard, seancesManquees, patients] =
     await Promise.all([
       prisma.patient.count(),
       prisma.patient.count({ where: { statutSuivi: "Suivi en cours" } }),
@@ -46,6 +46,12 @@ export default async function DashboardPage() {
         where: { atteint: false, dateCible: { lt: now } },
         include: { patient: { select: { id: true, nom: true, prenom: true } } },
         orderBy: { dateCible: "asc" },
+        take: 5,
+      }),
+      prisma.seance.findMany({
+        where: { statut: "Planifiée", date: { lt: now } },
+        include: { patient: { select: { id: true, nom: true, prenom: true } } },
+        orderBy: { date: "asc" },
         take: 5,
       }),
       prisma.patient.findMany({
@@ -177,8 +183,21 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {(bilansEnRetard.length > 0 || patientsAtRisqueChute.length > 0 || objectifsEnRetard.length > 0) && (
+      {(bilansEnRetard.length > 0 ||
+        patientsAtRisqueChute.length > 0 ||
+        objectifsEnRetard.length > 0 ||
+        seancesManquees.length > 0) && (
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {seancesManquees.length > 0 && (
+            <AlertCard
+              title="Séances manquées"
+              items={seancesManquees.map((s) => ({
+                id: s.patient.id,
+                label: `${s.patient.prenom} ${s.patient.nom}`,
+                sub: `${s.type ?? "Séance"} du ${formatDate(s.date)}`,
+              }))}
+            />
+          )}
           {patientsAtRisqueChute.length > 0 && (
             <AlertCard
               title="Risque de chute (TUG > 12s)"

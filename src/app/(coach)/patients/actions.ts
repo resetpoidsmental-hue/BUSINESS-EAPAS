@@ -5,8 +5,14 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { generateAccessCode, hashAccessCode } from "@/lib/auth";
 import { calculerScoreIPAQ, calculerBilanNutritionnel, type Sexe } from "@/lib/calculs";
-import { genererObjectifSMART, genererPlanningSeances, assistantIADisponible } from "@/lib/ai";
-import { buildPatientContext } from "@/lib/patient-context";
+import {
+  genererObjectifSMART,
+  genererPlanningSeances,
+  genererMessageAttention,
+  analyserSuivi,
+  assistantIADisponible,
+} from "@/lib/ai";
+import { buildPatientContext, buildSuiviContext } from "@/lib/patient-context";
 
 export interface ActionState {
   error?: string;
@@ -428,4 +434,74 @@ export async function generatePatientAccess(patientId: string) {
 export async function revokePatientAccess(patientId: string) {
   await prisma.patientAccess.updateMany({ where: { patientId }, data: { actif: false } });
   revalidatePath(`/patients/${patientId}`);
+}
+
+export interface SuggestionMessageState {
+  error?: string;
+  message?: string;
+  seanceId?: string;
+}
+
+export async function suggererMessageAttentionAction(
+  patientId: string,
+  seanceId: string,
+  _prev: SuggestionMessageState,
+  _formData: FormData
+): Promise<SuggestionMessageState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  const seance = await prisma.seance.findUnique({ where: { id: seanceId } });
+  if (!seance || seance.patientId !== patientId) return { error: "Séance introuvable." };
+
+  try {
+    const patientContext = await buildPatientContext(patientId);
+    const message = await genererMessageAttention({
+      patientContext,
+      dateSeanceManquee: seance.date.toLocaleDateString("fr-FR"),
+      typeSeanceManquee: seance.type ?? "Séance",
+    });
+    return { message, seanceId };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
+}
+
+export async function envoyerMessageAction(
+  patientId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const contenu = str(formData, "contenu");
+  if (!contenu) return { error: "Le message est vide." };
+
+  await prisma.messageCoach.create({ data: { patientId, contenu } });
+
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/portail");
+  return { success: "Message envoyé dans son espace." };
+}
+
+export interface AnalyseSuiviState {
+  error?: string;
+  analyse?: string;
+}
+
+export async function analyserSuiviAction(
+  patientId: string,
+  _prev: AnalyseSuiviState,
+  _formData: FormData
+): Promise<AnalyseSuiviState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  try {
+    const { contexte } = await buildSuiviContext(patientId);
+    const analyse = await analyserSuivi(contexte);
+    return { analyse };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de l'analyse." };
+  }
 }
