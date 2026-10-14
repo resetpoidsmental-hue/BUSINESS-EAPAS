@@ -391,6 +391,48 @@ export async function addBilanNutrition(patientId: string, _prev: ActionState, f
   return { success: "Bilan nutritionnel calculé et enregistré." };
 }
 
+export async function updateBilanNutrition(
+  bilanId: string,
+  patientId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const poidsKg = num(formData, "poids");
+  const tailleCm = num(formData, "taille");
+  const age = num(formData, "age");
+  const sexe = (str(formData, "sexe") as Sexe) ?? "H";
+  const nap = num(formData, "nap") ?? 1.375;
+  const objectifPonderal = str(formData, "objectifPonderal") ?? "maintien";
+
+  if (!poidsKg || !tailleCm || !age) {
+    return { error: "Poids, taille et âge sont obligatoires." };
+  }
+
+  const resultat = calculerBilanNutritionnel({ poidsKg, tailleCm, age, sexe, nap, objectifPonderal });
+
+  await prisma.bilanNutritionnel.update({
+    where: { id: bilanId },
+    data: {
+      taille: tailleCm,
+      poids: poidsKg,
+      tourDeTaille: num(formData, "tourDeTaille"),
+      age,
+      sexe,
+      nap,
+      objectifPonderal,
+      ...resultat,
+    },
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+  return { success: "Bilan nutritionnel modifié." };
+}
+
+export async function deleteBilanNutrition(bilanId: string, patientId: string) {
+  await prisma.bilanNutritionnel.delete({ where: { id: bilanId } });
+  revalidatePath(`/patients/${patientId}`);
+}
+
 export async function addSeance(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const dateSeance = date(formData, "date");
   if (!dateSeance) return { error: "La date est obligatoire." };

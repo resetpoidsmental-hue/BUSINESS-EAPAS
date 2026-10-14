@@ -10,7 +10,13 @@ import { CalculateurAutonome } from "./calculateur-autonome";
 
 export default async function NutritionPage() {
   const clients = await prisma.patient.findMany({
-    where: { metier: { in: ["Nutrition", "EAPAS+Nutrition"] } },
+    where: {
+      OR: [
+        { metier: { in: ["Nutrition", "EAPAS+Nutrition"] } },
+        { bilansNutrition: { some: {} } },
+        { modelesRation: { some: {} } },
+      ],
+    },
     include: { bilansNutrition: { orderBy: { date: "desc" }, take: 1 } },
     orderBy: { createdAt: "desc" },
   });
@@ -37,8 +43,8 @@ export default async function NutritionPage() {
       {clients.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted">
-            Aucun client nutrition pour le moment. Renseigne le métier « Nutrition » sur une fiche patient pour le
-            voir apparaître ici.
+            Aucun client nutrition pour le moment. Un patient apparaît ici dès qu&apos;il a le métier « Nutrition »,
+            un bilan nutritionnel ou un modèle de ration.
           </CardContent>
         </Card>
       ) : (

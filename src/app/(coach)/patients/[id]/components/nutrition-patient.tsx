@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { Plus, Sparkles } from "lucide-react";
-import { addBilanNutrition, type ActionState } from "../../actions";
+import { Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
+import { addBilanNutrition, updateBilanNutrition, deleteBilanNutrition, type ActionState } from "../../actions";
 import { dupliquerModeleRationAction } from "../../../nutrition/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,12 @@ interface Bilan {
   id: string;
   date: Date;
   poids: number;
+  taille: number;
+  tourDeTaille: number | null;
+  age: number;
+  sexe: string;
+  nap: number;
+  objectifPonderal: string;
   imc: number;
   classificationIMC: string;
   apportCalorique: number;
@@ -57,17 +63,50 @@ export function NutritionPatientSection({
   modeles: ModeleRationItem[];
   modelesBibliotheque: ModeleBibliothequeOption[];
 }) {
-  const action = addBilanNutrition.bind(null, patientId);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const action = editingId
+    ? updateBilanNutrition.bind(null, editingId, patientId)
+    : addBilanNutrition.bind(null, patientId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
-  const [form, setForm] = useState({
+  const defaultForm = {
     poids: 0,
     taille: 0,
+    tourDeTaille: 0,
     age: defaultAge ?? 0,
     sexe: (defaultSexe === "F" ? "F" : "H") as Sexe,
     nap: 1.375,
     objectifPonderal: "maintien",
-  });
+  };
+  const [form, setForm] = useState(defaultForm);
+
+  const [lastState, setLastState] = useState(state);
+  if (state !== lastState) {
+    setLastState(state);
+    if (state.success && editingId) {
+      setEditingId(null);
+      setForm(defaultForm);
+    }
+  }
+
+  function startEdit(b: Bilan) {
+    setEditingId(b.id);
+    setForm({
+      poids: b.poids,
+      taille: b.taille,
+      tourDeTaille: b.tourDeTaille ?? 0,
+      age: b.age,
+      sexe: b.sexe === "F" ? "F" : "H",
+      nap: b.nap,
+      objectifPonderal: b.objectifPonderal,
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(defaultForm);
+  }
 
   const preview = useMemo(() => {
     if (!form.poids || !form.taille || !form.age) return null;
@@ -85,13 +124,21 @@ export function NutritionPatientSection({
     <div className="flex flex-col gap-6">
       <Card>
         <CardContent className="p-5">
-          <form action={formAction} className="flex flex-col gap-5">
-            <p className="text-sm font-semibold">Calculateur nutritionnel (Mifflin-St Jeor)</p>
+          <form key={editingId ?? "new"} action={formAction} className="flex flex-col gap-5">
+            <p className="text-sm font-semibold">
+              {editingId ? "Modifier le bilan nutritionnel" : "Calculateur nutritionnel (Mifflin-St Jeor)"}
+            </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <NumField label="Poids (kg)" name="poids" value={form.poids} onChange={(v) => setForm((f) => ({ ...f, poids: v }))} />
               <NumField label="Taille (cm)" name="taille" value={form.taille} onChange={(v) => setForm((f) => ({ ...f, taille: v }))} />
               <NumField label="Âge (ans)" name="age" value={form.age} onChange={(v) => setForm((f) => ({ ...f, age: v }))} />
-              <NumField label="Tour de taille (cm)" name="tourDeTaille" optional />
+              <NumField
+                label="Tour de taille (cm)"
+                name="tourDeTaille"
+                value={form.tourDeTaille}
+                onChange={(v) => setForm((f) => ({ ...f, tourDeTaille: v }))}
+                optional
+              />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="sexe">Sexe</Label>
                 <select
@@ -155,9 +202,14 @@ export function NutritionPatientSection({
             {state.error && <p className="text-sm text-danger">{state.error}</p>}
             {state.success && <p className="text-sm text-success">{state.success}</p>}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {editingId && (
+                <Button type="button" variant="ghost" onClick={cancelEdit}>
+                  Annuler
+                </Button>
+              )}
               <Button type="submit" disabled={pending}>
-                {pending ? "Enregistrement…" : "Enregistrer le bilan nutritionnel"}
+                {pending ? "Enregistrement…" : editingId ? "Enregistrer les modifications" : "Enregistrer le bilan nutritionnel"}
               </Button>
             </div>
           </form>
@@ -173,6 +225,7 @@ export function NutritionPatientSection({
               <TableHead>IMC</TableHead>
               <TableHead>Apport cible</TableHead>
               <TableHead>Protéines</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -185,6 +238,27 @@ export function NutritionPatientSection({
                 </TableCell>
                 <TableCell>{formatNumber(b.apportCalorique, 0)} kcal</TableCell>
                 <TableCell>{formatNumber(b.apportProteines, 0)} g</TableCell>
+                <TableCell>
+                  <div className="flex justify-end gap-1">
+                    <button
+                      type="button"
+                      aria-label="Modifier ce bilan"
+                      onClick={() => startEdit(b)}
+                      className="rounded-[var(--radius-sm)] p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <form action={deleteBilanNutrition.bind(null, b.id, patientId)}>
+                      <button
+                        type="submit"
+                        aria-label="Supprimer ce bilan"
+                        className="rounded-[var(--radius-sm)] p-1.5 text-muted hover:bg-surface-muted hover:text-danger"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </form>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -284,7 +358,7 @@ function NumField({
         name={name}
         type="number"
         step="0.1"
-        defaultValue={optional ? undefined : value || undefined}
+        defaultValue={value || undefined}
         onChange={onChange ? (e) => onChange(Number(e.target.value) || 0) : undefined}
       />
     </div>
