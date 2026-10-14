@@ -163,3 +163,62 @@ export async function envoyerMenuAction(modeleId: string, _prev: ActionState, fo
   }
   return { success: "Menu envoyé dans son espace." };
 }
+
+export async function creerRecetteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const titre = str(formData, "titre");
+  const repas = str(formData, "repasJson");
+  const categories = str(formData, "categoriesJson");
+  const tags = str(formData, "tagsJson");
+  const description = str(formData, "description");
+
+  if (!titre) return { error: "Donne un titre à cette recette." };
+  if (!description) return { error: "Décris la recette (ingrédients, préparation)." };
+
+  const recette = await prisma.recette.create({
+    data: {
+      titre,
+      repas: repas ?? "[]",
+      categories: categories ?? "[]",
+      tags: tags ?? "[]",
+      description,
+    },
+  });
+
+  revalidatePath("/nutrition/recettes");
+  redirect(`/nutrition/recettes/${recette.id}`);
+}
+
+export async function modifierRecetteAction(
+  recetteId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const titre = str(formData, "titre");
+  const repas = str(formData, "repasJson");
+  const categories = str(formData, "categoriesJson");
+  const tags = str(formData, "tagsJson");
+  const description = str(formData, "description");
+
+  if (!titre) return { error: "Donne un titre à cette recette." };
+  if (!description) return { error: "Décris la recette (ingrédients, préparation)." };
+
+  await prisma.recette.update({
+    where: { id: recetteId },
+    data: {
+      titre,
+      repas: repas ?? "[]",
+      categories: categories ?? "[]",
+      tags: tags ?? "[]",
+      description,
+    },
+  });
+
+  revalidatePath("/nutrition/recettes");
+  revalidatePath(`/nutrition/recettes/${recetteId}`);
+  return { success: "Recette enregistrée." };
+}
+
+export async function supprimerRecetteAction(recetteId: string) {
+  await prisma.recette.delete({ where: { id: recetteId } });
+  revalidatePath("/nutrition/recettes");
+}

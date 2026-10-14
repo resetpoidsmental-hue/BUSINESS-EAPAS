@@ -5,17 +5,31 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { RationBuilder } from "../../components/ration-builder";
 import { PropositionMenu } from "../../components/proposition-menu";
-import { calculerEcartsRation, type RationQuantites, type Repartition, type MenuType } from "@/lib/categories-ration";
+import type { RecetteItem } from "../../components/bibliotheque-recettes";
+import { calculerEcartsRation, type RationQuantites, type Repartition, type MenuType, type MealKey } from "@/lib/categories-ration";
 
 export default async function ModeleRationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const modele = await prisma.modeleRation.findUnique({
-    where: { id },
-    include: { patient: { select: { id: true, nom: true, prenom: true } } },
-  });
+  const [modele, recettesDb] = await Promise.all([
+    prisma.modeleRation.findUnique({
+      where: { id },
+      include: { patient: { select: { id: true, nom: true, prenom: true } } },
+    }),
+    prisma.recette.findMany({ orderBy: { updatedAt: "desc" } }),
+  ]);
 
   if (!modele) notFound();
+
+  const recettes: RecetteItem[] = recettesDb.map((r) => ({
+    id: r.id,
+    titre: r.titre,
+    repas: JSON.parse(r.repas) as MealKey[],
+    categories: JSON.parse(r.categories) as string[],
+    tags: JSON.parse(r.tags) as string[],
+    description: r.description,
+    updatedAt: r.updatedAt.toISOString(),
+  }));
 
   const repartition = JSON.parse(modele.repartition) as Repartition;
   let ecarts: ReturnType<typeof calculerEcartsRation> = [];
@@ -44,6 +58,7 @@ export default async function ModeleRationPage({ params }: { params: Promise<{ i
         mode="edit"
         modeleId={modele.id}
         patientId={modele.patientId}
+        recettes={recettes}
         initial={{
           nom: modele.nom,
           targetKcal: modele.targetKcal,

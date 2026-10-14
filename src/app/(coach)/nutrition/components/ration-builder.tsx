@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { RecettePicker } from "./recette-picker";
+import type { RecetteItem } from "./bibliotheque-recettes";
 
 const initialState: ActionState = {};
 
@@ -29,6 +31,7 @@ interface RationBuilderProps {
   patientId?: string | null;
   modeleId?: string;
   defaultTargetKcal?: number;
+  recettes?: RecetteItem[];
   initial?: {
     nom: string;
     targetKcal: number;
@@ -38,7 +41,7 @@ interface RationBuilderProps {
   };
 }
 
-export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, initial }: RationBuilderProps) {
+export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, recettes = [], initial }: RationBuilderProps) {
   const action =
     mode === "edit" && modeleId
       ? modifierModeleRationAction.bind(null, modeleId)
@@ -231,6 +234,16 @@ export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, in
                   value={menuType[m]}
                   onChange={(e) => setMenuType((mt) => ({ ...mt, [m]: e.target.value }))}
                   placeholder="Ce que le patient mangera à ce repas…"
+                />
+                <RecettePicker
+                  meal={m}
+                  allocatedCategories={CATEGORIES_RATION.filter((cat) => (repartition[cat.key]?.[m] ?? 0) > 0).map(
+                    (cat) => cat.key
+                  )}
+                  recettes={recettes}
+                  onInsert={(text) =>
+                    setMenuType((mt) => ({ ...mt, [m]: mt[m] ? `${mt[m]}\n\n${text}` : text }))
+                  }
                 />
               </div>
             ))}

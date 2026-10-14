@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ChefHat } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,11 +27,18 @@ export default async function NutritionPage() {
         title="Nutrition"
         description="Calculateur rapide et suivi des clients nutrition."
         action={
-          <Button asChild variant="outline">
-            <Link href="/nutrition/rations">
-              <BookOpen className="h-4 w-4" /> Bibliothèque de rations
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/nutrition/recettes">
+                <ChefHat className="h-4 w-4" /> Bibliothèque de recettes
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/nutrition/rations">
+                <BookOpen className="h-4 w-4" /> Bibliothèque de rations
+              </Link>
+            </Button>
+          </div>
         }
       />
 
