@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatDate, formatHeure, dateKeyParis } from "@/lib/utils";
+import { journalInactifDepuis, SEUIL_JOURNAL_JOURS } from "@/lib/relances";
 
 const STATUT_ORDER = ["Bilan initial à faire", "Suivi en cours", "Bilan final fait", "Suivi terminé"] as const;
 const STATUT_COLOR: Record<string, string> = {
@@ -56,7 +57,11 @@ export default async function DashboardPage() {
       }),
       prisma.patient.findMany({
         where: { statutSuivi: { not: "Suivi terminé" } },
-        include: { bilans: { orderBy: { date: "desc" }, take: 1 } },
+        include: {
+          bilans: { orderBy: { date: "desc" }, take: 1 },
+          patientAccess: true,
+          journalEntrees: { orderBy: { date: "desc" }, take: 1 },
+        },
       }),
     ]);
 
@@ -70,6 +75,14 @@ export default async function DashboardPage() {
     const dernierTug = p.bilans[0]?.tugTemps;
     return dernierTug !== null && dernierTug !== undefined && dernierTug > 12;
   });
+  const journalNonRempli = patients.filter((p) =>
+    journalInactifDepuis({
+      dernierJournal: p.journalEntrees[0]?.date ?? null,
+      accessCreatedAt: p.patientAccess?.createdAt ?? null,
+      accessActif: p.patientAccess?.actif ?? false,
+      now,
+    })
+  );
 
   const faites = seancesRecentes.filter((s) => s.statut === "Faite").length;
   const total = seancesRecentes.length;
@@ -186,7 +199,8 @@ export default async function DashboardPage() {
       {(bilansEnRetard.length > 0 ||
         patientsAtRisqueChute.length > 0 ||
         objectifsEnRetard.length > 0 ||
-        seancesManquees.length > 0) && (
+        seancesManquees.length > 0 ||
+        journalNonRempli.length > 0) && (
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {seancesManquees.length > 0 && (
             <AlertCard
@@ -225,6 +239,16 @@ export default async function DashboardPage() {
                 id: o.patient.id,
                 label: `${o.patient.prenom} ${o.patient.nom}`,
                 sub: o.texteSMART,
+              }))}
+            />
+          )}
+          {journalNonRempli.length > 0 && (
+            <AlertCard
+              title={`Journal non rempli (+${SEUIL_JOURNAL_JOURS}j)`}
+              items={journalNonRempli.map((p) => ({
+                id: p.id,
+                label: `${p.prenom} ${p.nom}`,
+                sub: p.journalEntrees[0] ? `Dernier journal : ${formatDate(p.journalEntrees[0].date)}` : "Aucun journal rempli",
               }))}
             />
           )}

@@ -9,6 +9,7 @@ import {
   genererObjectifSMART,
   genererPlanningSeances,
   genererMessageAttention,
+  genererMessageRelanceJournal,
   analyserSuivi,
   assistantIADisponible,
 } from "@/lib/ai";
@@ -505,6 +506,42 @@ export async function suggererMessageAttentionAction(
       typeSeanceManquee: seance.type ?? "Séance",
     });
     return { message, seanceId };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
+}
+
+export interface SuggestionMessageRelanceState {
+  error?: string;
+  message?: string;
+}
+
+export async function suggererMessageRelanceJournalAction(
+  patientId: string,
+  _prev: SuggestionMessageRelanceState,
+  _formData: FormData
+): Promise<SuggestionMessageRelanceState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  const patient = await prisma.patient.findUnique({
+    where: { id: patientId },
+    include: { journalEntrees: { orderBy: { date: "desc" }, take: 1 }, patientAccess: true },
+  });
+  if (!patient) return { error: "Patient introuvable." };
+
+  const dernierJournal = patient.journalEntrees[0]?.date ?? null;
+  const inactiviteJournal = dernierJournal
+    ? `aucune entrée depuis le ${dernierJournal.toLocaleDateString("fr-FR")}`
+    : `aucune entrée depuis l'ouverture de son accès au portail${
+        patient.patientAccess ? ` le ${patient.patientAccess.createdAt.toLocaleDateString("fr-FR")}` : ""
+      }`;
+
+  try {
+    const patientContext = await buildPatientContext(patientId);
+    const message = await genererMessageRelanceJournal({ patientContext, inactiviteJournal });
+    return { message };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
   }

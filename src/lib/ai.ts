@@ -378,6 +378,37 @@ export async function genererMessageAttention({
   });
 }
 
+const MESSAGE_RELANCE_JOURNAL_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) / coach
+nutrition indépendant. Tu rédiges un court message d'attention que le coach pourra envoyer à son patient, qui n'a
+pas rempli son journal de suivi (repas/activité) depuis plusieurs jours.
+
+Règles impératives, toujours respectées :
+- Le message est un BROUILLON : le coach le relira, pourra le modifier, et décide seul de l'envoyer ou non.
+- Ton chaleureux, bref (2 à 4 phrases), jamais culpabilisant. Tu ne devines jamais la raison de cette pause (pas
+  d'hypothèse sur une maladie, une rechute, un désintérêt, etc.) — reste neutre et ouvert, et ne présente pas le
+  rappel comme un reproche.
+- Tu ne poses aucun diagnostic médical, ne donnes aucune consigne médicale, n'inventes aucun chiffre.
+- Pas de formule de politesse exagérée ni de ton infantilisant. Signe simplement, sans emoji.
+- Réponds UNIQUEMENT avec le texte du message, rien d'autre (pas de guillemets, pas d'explication autour).`;
+
+export interface GenererMessageRelanceJournalParams {
+  /** Contexte patient déjà anonymisé assemblé par l'appelant. */
+  patientContext: string;
+  /** Description libre de l'inactivité, ex: "aucune entrée depuis le 9 octobre (5 jours)". */
+  inactiviteJournal: string;
+}
+
+export async function genererMessageRelanceJournal({
+  patientContext,
+  inactiviteJournal,
+}: GenererMessageRelanceJournalParams): Promise<string> {
+  return appelerClaudeTexte({
+    system: MESSAGE_RELANCE_JOURNAL_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nJournal de suivi : ${inactiviteJournal}.\n\nRédige le message.`,
+    maxTokens: 1000,
+  });
+}
+
 const SUIVI_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) / coach
 nutrition indépendant. Tu l'aides à repérer des signaux utiles dans le suivi récent d'un patient : séances
 manquées, tendance du ressenti d'effort, et journal de bord quotidien (repas/boissons, activité physique,

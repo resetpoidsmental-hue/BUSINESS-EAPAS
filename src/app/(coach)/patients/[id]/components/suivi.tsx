@@ -3,12 +3,15 @@
 import { useActionState, useState } from "react";
 import {
   suggererMessageAttentionAction,
+  suggererMessageRelanceJournalAction,
   envoyerMessageAction,
   analyserSuiviAction,
   type SuggestionMessageState,
+  type SuggestionMessageRelanceState,
   type ActionState,
   type AnalyseSuiviState,
 } from "../../actions";
+import { SEUIL_JOURNAL_JOURS } from "@/lib/relances";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +20,7 @@ import { formatRepasStructureResume } from "@/lib/categories-ration";
 import { AlertTriangle, Sparkles, NotebookPen, Target, Send } from "lucide-react";
 
 const initialMessageState: SuggestionMessageState = {};
+const initialMessageRelanceState: SuggestionMessageRelanceState = {};
 const initialSendState: ActionState = {};
 const initialAnalyseState: AnalyseSuiviState = {};
 
@@ -128,17 +132,95 @@ function MessageAttention({ patientId, seance }: { patientId: string; seance: Se
   );
 }
 
+function RelanceJournal({ patientId, dernierJournal }: { patientId: string; dernierJournal: Date | null }) {
+  const suggestAction = suggererMessageRelanceJournalAction.bind(null, patientId);
+  const [suggestState, suggestFormAction, suggestPending] = useActionState(suggestAction, initialMessageRelanceState);
+
+  const sendAction = envoyerMessageAction.bind(null, patientId);
+  const [sendState, sendFormAction, sendPending] = useActionState(sendAction, initialSendState);
+
+  const [brouillon, setBrouillon] = useState<string | null>(null);
+
+  const [lastSuggestState, setLastSuggestState] = useState(suggestState);
+  if (suggestState !== lastSuggestState) {
+    setLastSuggestState(suggestState);
+    if (suggestState.message) setBrouillon(suggestState.message);
+  }
+
+  const [lastSendSuccess, setLastSendSuccess] = useState(sendState.success);
+  if (sendState.success !== lastSendSuccess) {
+    setLastSendSuccess(sendState.success);
+    if (sendState.success) setBrouillon(null);
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm">
+          {dernierJournal ? `Dernière entrée le ${formatDate(dernierJournal)}` : "Aucune entrée de journal"} — plus de{" "}
+          {SEUIL_JOURNAL_JOURS} jours
+        </p>
+        {!sendState.success && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={suggestPending}
+            onClick={() => suggestFormAction(new FormData())}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            {suggestPending ? "Génération…" : "Suggérer un message avec l'IA"}
+          </Button>
+        )}
+      </div>
+
+      {suggestState.error && <p className="text-sm text-danger">{suggestState.error}</p>}
+
+      {brouillon !== null && (
+        <form action={sendFormAction} className="flex flex-col gap-2">
+          <Textarea
+            name="contenu"
+            rows={3}
+            value={brouillon}
+            onChange={(e) => setBrouillon(e.target.value)}
+            className="text-sm"
+          />
+          <p className="text-xs text-muted">
+            Brouillon de l&rsquo;IA — relis-le et modifie-le si besoin. Rien n&rsquo;est envoyé tant que tu n&rsquo;as pas cliqué.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" disabled={sendPending || !brouillon.trim()}>
+              <Send className="h-3.5 w-3.5" />
+              {sendPending ? "Envoi…" : "Envoyer dans son espace"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setBrouillon(null)}>
+              Annuler
+            </Button>
+          </div>
+          {sendState.error && <p className="text-sm text-danger">{sendState.error}</p>}
+        </form>
+      )}
+
+      {sendState.success && <p className="text-sm text-success">{sendState.success}</p>}
+    </div>
+  );
+}
+
 export function SuiviSection({
   patientId,
   seancesManquees,
   ressentisRecents,
   journalEntrees,
+  journalNonRempli,
+  dernierJournal,
   prochaineEcheance,
 }: {
   patientId: string;
   seancesManquees: SeanceManquee[];
   ressentisRecents: RessentiRecent[];
   journalEntrees: JournalEntreeVue[];
+  journalNonRempli: boolean;
+  dernierJournal: Date | null;
   prochaineEcheance: Date | null;
 }) {
   const analyseAction = analyserSuiviAction.bind(null, patientId);
@@ -185,6 +267,22 @@ export function SuiviSection({
                 <MessageAttention key={s.id} patientId={patientId} seance={s} />
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {journalNonRempli && (
+        <Card>
+          <CardContent className="flex flex-col gap-3 p-5">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <h2 className="text-sm font-semibold">Journal non rempli</h2>
+            </div>
+            <RelanceJournal patientId={patientId} dernierJournal={dernierJournal} />
+            <p className="text-xs text-muted">
+              Seuil fixe : {SEUIL_JOURNAL_JOURS} jours sans entrée de journal. L&rsquo;IA ne lit que le contexte patient
+              déjà anonymisé — elle ne devine jamais la raison de l&rsquo;absence et n&rsquo;invente aucun chiffre.
+            </p>
           </CardContent>
         </Card>
       )}

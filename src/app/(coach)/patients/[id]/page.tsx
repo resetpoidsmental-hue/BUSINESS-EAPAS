@@ -15,6 +15,7 @@ import { SeancesSection } from "./components/seances";
 import { PortailAccess } from "./components/portail-access";
 import { IdentiteForm } from "./components/identite-form";
 import { SuiviSection } from "./components/suivi";
+import { journalInactifDepuis } from "@/lib/relances";
 
 function toDateInput(d: Date | null) {
   return d ? d.toISOString().slice(0, 10) : null;
@@ -45,6 +46,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     prisma.modeleRation.findMany({ where: { patientId: null }, orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
   const age = ageFromDate(patient.dateNaissance);
+
+  const dernierJournal = patient.journalEntrees[0]?.date ?? null;
+  const journalNonRempli = journalInactifDepuis({
+    dernierJournal,
+    accessCreatedAt: patient.patientAccess?.createdAt ?? null,
+    accessActif: patient.patientAccess?.actif ?? false,
+    now: new Date(),
+  });
 
   return (
     <div>
@@ -179,6 +188,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
               motivation: j.motivation,
               notes: j.notes,
             }))}
+            journalNonRempli={journalNonRempli}
+            dernierJournal={dernierJournal}
             prochaineEcheance={
               patient.objectifs
                 .filter((o) => !o.atteint && o.dateCible)
