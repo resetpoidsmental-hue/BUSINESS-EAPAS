@@ -10,6 +10,9 @@ export interface CategorieRation {
   p: number;
   l: number;
   g: number;
+  /** Alcool pur en grammes pour 100 g de référence — ne contribue pas aux colonnes P/L/G,
+   * seulement à l'énergie (7 kcal/g, facteur d'Atwater standard). */
+  a?: number;
 }
 
 export const CATEGORIES_RATION: CategorieRation[] = [
@@ -26,6 +29,7 @@ export const CATEGORIES_RATION: CategorieRation[] = [
   { key: "oleagineux", label: "Fruits oléagineux", p: 18, l: 60, g: 10 },
   { key: "huile", label: "Huile", p: 0, l: 100, g: 0 },
   { key: "sucre", label: "Sucre", p: 0, l: 0, g: 100 },
+  { key: "alcool", label: "Alcool", p: 0, l: 0, g: 0, a: 100 },
 ];
 
 export const MEAL_KEYS = ["pd", "dej", "col", "din"] as const;
@@ -62,8 +66,14 @@ export function calculerLigneRation(cat: CategorieRation, qty: number): LigneRat
   const p = round1((cat.p * q) / 100);
   const l = round1((cat.l * q) / 100);
   const g = round1((cat.g * q) / 100);
-  const aet = Math.round(4 * p + 9 * l + 4 * g);
+  const a = ((cat.a ?? 0) * q) / 100;
+  const aet = Math.round(4 * p + 9 * l + 4 * g + 7 * a);
   return { key: cat.key, label: cat.label, qty: q, p, l, g, aet };
+}
+
+/** 1 kcal = 4,184 kJ (facteur standard). */
+export function kcalVersMJ(kcal: number): number {
+  return (kcal * 4.184) / 1000;
 }
 
 export interface TotauxRation {
@@ -101,7 +111,8 @@ export function calculerKcalRepas(repartition: Repartition, meal: MealKey): numb
     const p = (cat.p * q) / 100;
     const l = (cat.l * q) / 100;
     const g = (cat.g * q) / 100;
-    kcal += 4 * p + 9 * l + 4 * g;
+    const a = ((cat.a ?? 0) * q) / 100;
+    kcal += 4 * p + 9 * l + 4 * g + 7 * a;
   }
   return Math.round(kcal);
 }

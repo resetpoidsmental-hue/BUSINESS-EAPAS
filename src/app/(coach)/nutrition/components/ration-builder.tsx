@@ -8,6 +8,7 @@ import {
   MEAL_LABELS,
   calculerRation,
   calculerKcalRepas,
+  kcalVersMJ,
   rationVide,
   repartitionVide,
   menuTypeVide,
@@ -54,6 +55,10 @@ export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, in
 
   const repartiTotal = (catKey: string) => MEAL_KEYS.reduce((s, m) => s + (repartition[catKey]?.[m] ?? 0), 0);
 
+  const [uniteEnergie, setUniteEnergie] = useState<"kcal" | "MJ">("kcal");
+  const formatEnergie = (kcal: number) =>
+    uniteEnergie === "MJ" ? `${kcalVersMJ(kcal).toFixed(2)} MJ` : `${kcal} kcal`;
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="rationJson" value={JSON.stringify(qty)} />
@@ -96,7 +101,16 @@ export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, in
                   <th className="py-2 text-right">Protéines</th>
                   <th className="py-2 text-right">Lipides</th>
                   <th className="py-2 text-right">Glucides</th>
-                  <th className="py-2 text-right">Énergie</th>
+                  <th className="py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setUniteEnergie((u) => (u === "kcal" ? "MJ" : "kcal"))}
+                      className="inline-flex items-center gap-1 normal-case tracking-normal text-foreground hover:text-primary"
+                      title="Basculer entre kcal et MJ"
+                    >
+                      Énergie <span className="text-primary">({uniteEnergie})</span>
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -114,7 +128,7 @@ export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, in
                     <td className="py-2 text-right tabular-nums">{row.p} g</td>
                     <td className="py-2 text-right tabular-nums">{row.l} g</td>
                     <td className="py-2 text-right tabular-nums">{row.g} g</td>
-                    <td className="py-2 text-right tabular-nums">{row.aet} kcal</td>
+                    <td className="py-2 text-right tabular-nums">{formatEnergie(row.aet)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -125,7 +139,7 @@ export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, in
                   <td className="py-2 text-right">{totaux.totalP} g</td>
                   <td className="py-2 text-right">{totaux.totalL} g</td>
                   <td className="py-2 text-right">{totaux.totalG} g</td>
-                  <td className="py-2 text-right">{totaux.totalAet} kcal</td>
+                  <td className="py-2 text-right">{formatEnergie(totaux.totalAet)}</td>
                 </tr>
                 <tr className="text-xs text-muted">
                   <td colSpan={2} className="pt-1">
@@ -140,8 +154,8 @@ export function RationBuilder({ mode, patientId, modeleId, defaultTargetKcal, in
             </table>
           </div>
           <p className="mt-3 text-xs text-muted">
-            Valeurs de référence pour 100 g (table de composition simplifiée) — {totaux.totalAet} / {targetKcal} kcal
-            visés.
+            Valeurs de référence pour 100 g (table de composition simplifiée) — {formatEnergie(totaux.totalAet)} /{" "}
+            {formatEnergie(targetKcal)} visés.
           </p>
         </CardContent>
       </Card>
