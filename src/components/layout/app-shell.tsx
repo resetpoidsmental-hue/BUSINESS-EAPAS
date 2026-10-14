@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
   Link2,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/app/connexion/actions";
@@ -22,6 +23,7 @@ import { logout } from "@/app/connexion/actions";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/patients", label: "Patients & clients", icon: Users },
+  { href: "/analytique", label: "Analytique", icon: BarChart3 },
   { href: "/nutrition", label: "Nutrition", icon: Salad },
   { href: "/administratif", label: "Administratif", icon: FileText },
   { href: "/assistant", label: "Assistant IA", icon: Sparkles },
