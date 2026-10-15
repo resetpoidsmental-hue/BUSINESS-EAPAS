@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   suggererResumeAppelAction,
   enregistrerAppelProspectAction,
@@ -14,7 +15,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles } from "lucide-react";
+import { Sparkles, CalendarDays } from "lucide-react";
+
+const DRAFT_KEY = "eapas-fiche-appel-brouillon";
+
+interface Brouillon {
+  nom: string;
+  email: string;
+  telephone: string;
+  source: string;
+  checked: Record<string, boolean>;
+  responses: Record<string, string>;
+  notesLibres: string;
+}
+
+function chargerBrouillon(): Brouillon | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as Brouillon) : null;
+  } catch {
+    return null;
+  }
+}
 
 const initialResumeState: ResumeAppelState = {};
 const initialSaveState: ActionState = {};
@@ -49,20 +71,49 @@ function assemblerNotes(
 export function FicheAppel() {
   const router = useRouter();
 
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [responses, setResponses] = useState<Record<string, string>>({});
-  const [notesLibres, setNotesLibres] = useState("");
+  // Restauré une seule fois, de façon synchrone (pas d'effet) : évite de perdre les notes
+  // en changeant d'onglet, en cas de coupure réseau ou de fermeture accidentelle.
+  const [brouillonInitial] = useState<Brouillon | null>(() => (typeof window === "undefined" ? null : chargerBrouillon()));
+  const brouillonRestaure = !!brouillonInitial;
 
-  const [nom, setNom] = useState("");
-  const [email, setEmail] = useState("");
-  const [telephone, setTelephone] = useState("");
-  const [source, setSource] = useState("");
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => brouillonInitial?.checked ?? {});
+  const [responses, setResponses] = useState<Record<string, string>>(() => brouillonInitial?.responses ?? {});
+  const [notesLibres, setNotesLibres] = useState(() => brouillonInitial?.notesLibres ?? "");
+
+  const [nom, setNom] = useState(() => brouillonInitial?.nom ?? "");
+  const [email, setEmail] = useState(() => brouillonInitial?.email ?? "");
+  const [telephone, setTelephone] = useState(() => brouillonInitial?.telephone ?? "");
+  const [source, setSource] = useState(() => brouillonInitial?.source ?? "");
 
   const [resumeState, resumeFormAction, resumePending] = useActionState(suggererResumeAppelAction, initialResumeState);
   const [saveState, saveFormAction, savePending] = useActionState(enregistrerAppelProspectAction, initialSaveState);
 
   const totalLignes = SCRIPT_APPEL.reduce((s, e) => s + e.lignes.length, 0);
   const doneLignes = Object.values(checked).filter(Boolean).length;
+
+  const premierRendu = useRef(true);
+
+  // Sauvegarde continue du brouillon : aucune saisie n'est perdue en changeant d'onglet ou en cas de coupure.
+  useEffect(() => {
+    if (premierRendu.current) {
+      premierRendu.current = false;
+      return;
+    }
+    try {
+      const brouillon: Brouillon = { nom, email, telephone, source, checked, responses, notesLibres };
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(brouillon));
+    } catch {
+      // stockage indisponible (navigation privée, quota…) : on continue sans bloquer la saisie
+    }
+  }, [nom, email, telephone, source, checked, responses, notesLibres]);
+
+  function effacerBrouillon() {
+    try {
+      window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+  }
 
   function toggle(key: string) {
     setChecked((c) => ({ ...c, [key]: !c[key] }));
@@ -76,6 +127,25 @@ export function FicheAppel() {
 
   return (
     <div className="flex flex-col gap-5">
+      {brouillonRestaure && (
+        <div className="rounded-[var(--radius-sm)] border border-primary/30 bg-primary-soft px-4 py-2 text-sm text-primary-hover">
+          Brouillon restauré automatiquement — tes notes précédentes n&rsquo;ont pas été perdues.
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted">Tes notes sont sauvegardées automatiquement au fil de la saisie.</p>
+        <Link
+          href="/agenda"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-surface-muted"
+        >
+          <CalendarDays className="h-4 w-4" />
+          Voir l&rsquo;agenda pour un créneau précis
+        </Link>
+      </div>
+
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
@@ -249,6 +319,7 @@ export function FicheAppel() {
               fd.set("source", source);
               fd.set("notesTexte", assemblerNotes(responses, notesLibres));
               fd.set("prestationSuggereeNom", resumeState.resume?.prestationSuggereeNom ?? "");
+              effacerBrouillon();
               saveFormAction(fd);
             }}
             className="flex flex-col gap-2"

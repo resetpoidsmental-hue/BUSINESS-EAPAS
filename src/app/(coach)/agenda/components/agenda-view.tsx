@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { updateSeanceStatut } from "../../patients/actions";
@@ -83,6 +84,8 @@ export function AgendaView({
   const [choix, setChoix] = useState("");
 
   const jours = useMemo(() => Array.from({ length: 7 }, (_, i) => ajouterJours(lundi, i)), [lundi]);
+
+  const aucunHoraireConfigure = horaires.every((h) => !h.actif) && exceptionnels.length === 0;
 
   function naviguer(delta: number) {
     const cible = ajouterJours(lundi, delta * 7);
@@ -172,6 +175,26 @@ export function AgendaView({
       <p className="text-xs text-muted">
         Un créneau « Prospect » n&rsquo;apparaît que dans l&rsquo;agenda, jamais sur le tableau de bord, tant qu&rsquo;il n&rsquo;est pas confirmé.
       </p>
+
+      {aucunHoraireConfigure && (
+        <Card className="border-warning">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-bold">Aucun horaire de travail configuré</span>
+              <span className="text-xs text-muted">
+                Tant qu&rsquo;aucun jour n&rsquo;est activé, aucun créneau n&rsquo;est cliquable dans l&rsquo;agenda — configure tes horaires pour pouvoir y placer des rendez-vous.
+              </span>
+            </div>
+            <Link
+              href="/reglages"
+              className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-surface-muted"
+            >
+              <Settings className="h-4 w-4" />
+              Configurer mes horaires
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="overflow-x-auto p-0">
