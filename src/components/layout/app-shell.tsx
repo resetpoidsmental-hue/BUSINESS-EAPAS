@@ -16,13 +16,19 @@ import {
   LogOut,
   Link2,
   BarChart3,
+  CalendarDays,
+  Tag,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/app/connexion/actions";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/patients", label: "Patients & clients", icon: Users },
+  { href: "/prospects", label: "Prospects", icon: UserPlus },
+  { href: "/prestations", label: "Prestations", icon: Tag },
   { href: "/analytique", label: "Analytique", icon: BarChart3 },
   { href: "/nutrition", label: "Nutrition", icon: Salad },
   { href: "/administratif", label: "Administratif", icon: FileText },

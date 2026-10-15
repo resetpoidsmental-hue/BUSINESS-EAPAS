@@ -45,7 +45,7 @@ function totalLignes(lignes: LigneInput[]) {
   return lignes.reduce((sum, l) => sum + l.quantite * l.prixUnitaire, 0);
 }
 
-async function nextNumero(kind: "devis" | "facture" | "contrat") {
+export async function nextNumero(kind: "devis" | "facture" | "contrat") {
   const settings = await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
   const year = new Date().getFullYear();
 

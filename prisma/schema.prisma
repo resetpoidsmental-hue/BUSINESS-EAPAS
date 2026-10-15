@@ -71,6 +71,7 @@ model Patient {
   journalEntrees   JournalEntree[]
   messages         MessageCoach[]
   modelesRation    ModeleRation[]
+  prospect         Prospect?
 }
 
 model EntretienInitial {
@@ -316,4 +317,53 @@ model PatientAccess {
   actif       Boolean   @default(true)
   createdAt   DateTime  @default(now())
   lastLoginAt DateTime?
+}
+
+model Prestation {
+  id            String     @id @default(cuid())
+  nom           String
+  type          String
+  tarif         Float
+  unite         String
+  dureeSemaines Int?
+  inclusions    String?
+  actif         Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  prospects     Prospect[]
+}
+
+model Prospect {
+  id             String      @id @default(cuid())
+  nom            String
+  email          String?
+  telephone      String?
+  source         String
+  prestationId   String?
+  prestation     Prestation? @relation(fields: [prestationId], references: [id], onDelete: SetNull)
+  message        String?
+  notesAppel     String?
+  statut         String      @default("Nouveau")
+  creneauPropose DateTime?
+  patientId      String?     @unique
+  patient        Patient?    @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model HoraireTravail {
+  id    String  @id @default(cuid())
+  jour  Int     @unique
+  actif Boolean @default(false)
+  debut String  @default("09:00")
+  fin   String  @default("18:00")
+}
+
+model CreneauExceptionnel {
+  id        String   @id @default(cuid())
+  date      DateTime
+  debut     String
+  fin       String
+  note      String?
+  createdAt DateTime @default(now())
 }

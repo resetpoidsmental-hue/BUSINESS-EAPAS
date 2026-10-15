@@ -20,7 +20,7 @@ export interface ActionState {
   success?: string;
 }
 
-async function nextNumDossier() {
+export async function nextNumDossier() {
   const year = new Date().getFullYear();
   const count = await prisma.patient.count();
   return `DP-${year}-${String(count + 1).padStart(3, "0")}`;

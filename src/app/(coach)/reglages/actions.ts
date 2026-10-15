@@ -53,3 +53,41 @@ export async function togglePortal(enabled: boolean) {
   revalidatePath("/", "layout");
   revalidatePath("/reglages");
 }
+
+export async function enregistrerHorairesAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  for (let jour = 0; jour < 7; jour++) {
+    const actif = formData.get(`actif_${jour}`) === "on";
+    const debut = str(formData, `debut_${jour}`) ?? "09:00";
+    const fin = str(formData, `fin_${jour}`) ?? "18:00";
+    await prisma.horaireTravail.upsert({
+      where: { jour },
+      update: { actif, debut, fin },
+      create: { jour, actif, debut, fin },
+    });
+  }
+
+  revalidatePath("/reglages");
+  revalidatePath("/agenda");
+  return { success: "Horaires enregistrés." };
+}
+
+export async function ajouterCreneauExceptionnelAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const dateStr = str(formData, "date");
+  const debut = str(formData, "debut");
+  const fin = str(formData, "fin");
+  if (!dateStr || !debut || !fin) return { error: "Indique une date et des horaires." };
+
+  await prisma.creneauExceptionnel.create({
+    data: { date: new Date(dateStr), debut, fin, note: str(formData, "note") },
+  });
+
+  revalidatePath("/reglages");
+  revalidatePath("/agenda");
+  return { success: "Créneau exceptionnel ajouté." };
+}
+
+export async function supprimerCreneauExceptionnelAction(id: string) {
+  await prisma.creneauExceptionnel.delete({ where: { id } });
+  revalidatePath("/reglages");
+  revalidatePath("/agenda");
+}

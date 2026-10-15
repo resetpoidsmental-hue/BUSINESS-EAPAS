@@ -98,8 +98,13 @@ export default async function DashboardPage() {
         <CardContent className="p-5">
           <div className="mb-3 flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">Aujourd&apos;hui</h2>
+            <Link href="/agenda" className="text-sm font-semibold hover:underline">
+              Aujourd&apos;hui
+            </Link>
             <Badge variant="default">{seancesAujourdhui.length}</Badge>
+            <Link href="/agenda" className="ml-auto text-xs font-medium text-primary hover:underline">
+              Voir l&apos;agenda complet →
+            </Link>
           </div>
           {seancesAujourdhui.length === 0 ? (
             <p className="text-sm text-muted">Aucun rendez-vous aujourd&apos;hui.</p>

@@ -496,3 +496,65 @@ export async function genererPropositionMenu({
 
   return parsePropositionMenu(parsed);
 }
+
+const RESUME_APPEL_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant. Il vient de terminer un appel de découverte avec un prospect (pas encore patient) et a
+pris des notes brutes, question par question, en suivant son script de vente. Tu structures ces notes en un résumé
+exploitable, pour qu'il puisse créer la fiche du prospect en un coup d'œil.
+
+Règles impératives, toujours respectées :
+- Tu ne fais QUE reformuler et structurer ce que le coach a écrit dans ses notes — tu n'inventes aucune information
+  qui n'y figure pas. Un champ dont les notes ne parlent pas reste une chaîne vide "".
+- Tu n'inventes jamais de tarif, de durée ou de chiffre : la "prestationSuggereeNom" doit être recopiée EXACTEMENT
+  parmi la liste des prestations actives fournie, ou laissée vide si aucune ne correspond clairement.
+- Reste factuel et bref (une phrase courte par champ), dans les mots du coach, jamais de jugement sur le prospect.
+- Réponds UNIQUEMENT avec du JSON brut valide, sans texte autour, sans balises de code, selon le schéma donné.`;
+
+const RESUME_APPEL_SCHEMA = `{
+  "objectif": string (ce qui amène le prospect, résumé en une phrase ; "" si non noté),
+  "disponibilites": string (ses disponibilités déclarées ; "" si non noté),
+  "dejaEssaye": string (ce qu'il a déjà essayé et pourquoi ça n'a pas tenu ; "" si non noté),
+  "objectionPrincipale": string (l'objection la plus marquante et comment il/elle a réagi ; "" si aucune),
+  "prestationSuggereeNom": string (nom EXACT d'une prestation de la liste fournie qui correspond, ou "" si aucune ne correspond),
+  "prochaineEtape": string (créneau ou date de relance notés ; "" si non noté)
+}`;
+
+export interface ResumeAppel {
+  objectif: string;
+  disponibilites: string;
+  dejaEssaye: string;
+  objectionPrincipale: string;
+  prestationSuggereeNom: string;
+  prochaineEtape: string;
+}
+
+function parseResumeAppel(parsed: unknown): ResumeAppel {
+  const p = (parsed ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  return {
+    objectif: str(p.objectif),
+    disponibilites: str(p.disponibilites),
+    dejaEssaye: str(p.dejaEssaye),
+    objectionPrincipale: str(p.objectionPrincipale),
+    prestationSuggereeNom: str(p.prestationSuggereeNom),
+    prochaineEtape: str(p.prochaineEtape),
+  };
+}
+
+export async function genererResumeAppel({
+  notes,
+  prestationsActives,
+}: {
+  /** Notes brutes du coach, assemblées question par question. */
+  notes: string;
+  /** Noms des prestations actives du catalogue, pour que l'IA ne suggère que parmi elles. */
+  prestationsActives: string[];
+}): Promise<ResumeAppel> {
+  const parsed = await appelerClaudeJSON({
+    system: RESUME_APPEL_SYSTEM_PROMPT,
+    userContent: `Notes prises pendant l'appel :\n${notes}\n\nPrestations actives du catalogue (choisir UNIQUEMENT parmi celles-ci, ou laisser vide) :\n${prestationsActives.join(", ") || "(aucune)"}\n\nSchéma JSON attendu :\n${RESUME_APPEL_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
+    maxTokens: 1200,
+  });
+
+  return parseResumeAppel(parsed);
+}
