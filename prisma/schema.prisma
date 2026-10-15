@@ -72,6 +72,7 @@ model Patient {
   messages         MessageCoach[]
   modelesRation    ModeleRation[]
   prospect         Prospect?
+  prelevements     Prelevement[]
 }
 
 model EntretienInitial {
@@ -189,16 +190,40 @@ model Seance {
 }
 
 model Abonnement {
-  id                   String    @id @default(cuid())
-  patientId            String    @unique
-  patient              Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  formule              String
-  montantMensuel       Float
-  dateDebut            DateTime
-  jourPrelevement      Int?
-  dateDernierPaiement  DateTime?
-  prochainPaiement     DateTime?
-  statutPaiement       String    @default("À jour")
+  id                     String        @id @default(cuid())
+  patientId              String        @unique
+  patient                Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  formule                String
+  montantMensuel         Float
+  dateDebut              DateTime
+  jourPrelevement        Int?
+  dateDernierPaiement    DateTime?
+  prochainPaiement       DateTime?
+  statutPaiement         String        @default("À jour")
+  prelevementActif       Boolean       @default(true)
+  stripeCustomerId       String?
+  stripePaymentMethodId  String?
+  cardBrand              String?
+  cardLast4              String?
+  cardExpMois            Int?
+  cardExpAnnee           Int?
+  prelevements           Prelevement[]
+}
+
+model Prelevement {
+  id                    String      @id @default(cuid())
+  abonnementId          String
+  abonnement            Abonnement  @relation(fields: [abonnementId], references: [id], onDelete: Cascade)
+  patientId             String
+  patient               Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  factureId             String?     @unique
+  facture               Facture?    @relation(fields: [factureId], references: [id], onDelete: SetNull)
+  montant               Float
+  statut                String      @default("En attente")
+  motifEchec            String?
+  stripePaymentIntentId String?
+  date                  DateTime    @default(now())
+  createdAt             DateTime    @default(now())
 }
 
 model Devis {
@@ -246,6 +271,7 @@ model Facture {
   dateEcheance   DateTime?
   datePaiement   DateTime?
   createdAt      DateTime  @default(now())
+  prelevement    Prelevement?
 }
 
 model SAVTicket {

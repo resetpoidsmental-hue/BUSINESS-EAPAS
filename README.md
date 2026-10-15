@@ -195,6 +195,54 @@ changement de structure est tracé dans `prisma/migrations/`, versionné avec
 le code). En cas de changement de structure important, fais une sauvegarde
 avant de mettre à jour.
 
+## Facturation récurrente (abonnements, Stripe + Resend)
+
+Optionnel — le reste de l'application fonctionne normalement sans. Une fois en
+place : tes patients abonnés enregistrent leur carte depuis le Portail patient,
+et l'app les prélève automatiquement chaque mois à la date prévue, crée la
+facture et envoie un reçu par email. Aucune relance automatique en cas
+d'échec — tu es informé(e) sur le tableau de bord et tu décides quoi faire.
+
+### 1. Stripe
+
+1. Crée un compte sur [dashboard.stripe.com](https://dashboard.stripe.com) (ou
+   utilise celui que tu as déjà).
+2. Récupère ta **clé secrète** (Développeurs → Clés API) et mets-la dans
+   `STRIPE_SECRET_KEY`. Commence en mode **Test** pour vérifier que tout
+   fonctionne avant de passer en mode **Live**.
+3. Crée un **webhook** (Développeurs → Webhooks → Ajouter un point de
+   terminaison) pointant vers `https://<APP_HOST>/api/stripe/webhook`, avec
+   les événements : `checkout.session.completed`, `payment_intent.succeeded`,
+   `payment_intent.payment_failed`. Copie le **secret de signature** généré
+   dans `STRIPE_WEBHOOK_SECRET`.
+4. Génère un `CRON_SECRET` avec `openssl rand -hex 32`.
+
+### 2. Resend (envoi des reçus par email)
+
+1. Crée un compte sur [resend.com](https://resend.com).
+2. Ajoute et vérifie ton domaine (`sante-and-co.com` par exemple) : Resend te
+   donne 2-3 enregistrements DNS (SPF, DKIM) à ajouter chez ton
+   hébergeur/registrar du domaine. La vérification prend quelques minutes à
+   quelques heures selon le DNS.
+3. Crée une clé API et mets-la dans `RESEND_API_KEY`.
+4. Choisis l'adresse d'envoi (doit être sur le domaine vérifié), par exemple
+   `factures@sante-and-co.com`, et mets-la dans `RESEND_FROM_EMAIL`.
+
+### 3. Déclencher les prélèvements chaque jour
+
+L'app ne prélève jamais toute seule en continu : une tâche doit appeler
+l'endpoint une fois par jour. Sur le VPS :
+
+```bash
+crontab -e
+```
+
+Ajoute (prélève tous les jours à 8h) :
+
+```
+0 8 * * * curl -s -X POST -H "x-cron-secret: <la même valeur que CRON_SECRET>" https://<APP_HOST>/api/cron/prelevements
+```
+
 ## Sécurité & RGPD
 
 - Les mots de passe sont hachés (bcrypt), les sessions sont des cookies signés
@@ -217,12 +265,8 @@ formules, articles, recettes) connecté à EAPAS Suite via n8n. Voir
 
 ## Pistes d'évolution non incluses dans cette v1
 
-- Paiement/réservation en ligne (Stripe) sur la page Formules, connecté à l'agenda
-  et à l'application (Devis/Facture/Abonnement créés automatiquement).
 - Assistant IA : génération d'objectifs SMART, de brouillons de bilan
   (T1/T2/final) et de réponses SAV — seule la préparation de fiche de séance
   est implémentée pour l'instant (voir « Assistant IA » ci-dessus).
-- Notification du matériel nécessaire par email en plus du portail patient
-  (nécessite de connecter l'app à un service d'envoi d'email, ex. Resend).
 - Questionnaire Ricci & Gagnon (mentionné dans certaines de tes ressources) en
   complément du calculateur IPAQ déjà implémenté.

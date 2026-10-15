@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDateTime, formatDate, formatHeure, dateKeyParis } from "@/lib/utils";
+import { formatDateTime, formatDate, formatHeure, formatCurrency, dateKeyParis } from "@/lib/utils";
 import { journalInactifDepuis, SEUIL_JOURNAL_JOURS } from "@/lib/relances";
 
 const STATUT_ORDER = ["Bilan initial à faire", "Suivi en cours", "Bilan final fait", "Suivi terminé"] as const;
@@ -23,8 +23,22 @@ export default async function DashboardPage() {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 3600 * 1000);
 
-  const [totalPatients, actifs, parStatut, seancesAutourAujourdhui, prochainesSeances, seancesRecentes, objectifsEnRetard, seancesManquees, patients] =
-    await Promise.all([
+  const trenteJoursAvant = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+
+  const [
+    totalPatients,
+    actifs,
+    parStatut,
+    seancesAutourAujourdhui,
+    prochainesSeances,
+    seancesRecentes,
+    objectifsEnRetard,
+    seancesManquees,
+    patients,
+    prelevementsEchecs,
+    prelevementsEnAttente,
+    prelevementsReussisMois,
+  ] = await Promise.all([
       prisma.patient.count(),
       prisma.patient.count({ where: { statutSuivi: "Suivi en cours" } }),
       prisma.patient.groupBy({ by: ["statutSuivi"], _count: { _all: true } }),
@@ -62,6 +76,21 @@ export default async function DashboardPage() {
           patientAccess: true,
           journalEntrees: { orderBy: { date: "desc" }, take: 1 },
         },
+      }),
+      prisma.prelevement.findMany({
+        where: { statut: "Échec" },
+        include: { patient: { select: { id: true, nom: true, prenom: true } } },
+        orderBy: { date: "desc" },
+      }),
+      prisma.prelevement.findMany({
+        where: { statut: "En attente" },
+        include: { patient: { select: { id: true, nom: true, prenom: true } } },
+        orderBy: { date: "desc" },
+      }),
+      prisma.prelevement.aggregate({
+        where: { statut: "Réussi", date: { gte: trenteJoursAvant } },
+        _sum: { montant: true },
+        _count: { _all: true },
       }),
     ]);
 
@@ -205,8 +234,20 @@ export default async function DashboardPage() {
         patientsAtRisqueChute.length > 0 ||
         objectifsEnRetard.length > 0 ||
         seancesManquees.length > 0 ||
-        journalNonRempli.length > 0) && (
+        journalNonRempli.length > 0 ||
+        prelevementsEchecs.length > 0) && (
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {prelevementsEchecs.length > 0 && (
+            <AlertCard
+              title="Prélèvements échoués"
+              items={prelevementsEchecs.map((p) => ({
+                id: p.patient.id,
+                label: `${p.patient.prenom} ${p.patient.nom}`,
+                sub: `${p.motifEchec ?? "Échec"} — ${formatCurrency(p.montant)}`,
+              }))}
+              hrefPrefix="/administratif"
+            />
+          )}
           {seancesManquees.length > 0 && (
             <AlertCard
               title="Séances manquées"
@@ -260,6 +301,52 @@ export default async function DashboardPage() {
         </div>
       )}
 
+      {(prelevementsEnAttente.length > 0 || (prelevementsReussisMois._count._all ?? 0) > 0) && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {prelevementsEnAttente.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-warning" />
+                  <h3 className="text-sm font-semibold">SEPA en attente de confirmation</h3>
+                  <Badge variant="warning">{prelevementsEnAttente.length}</Badge>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {prelevementsEnAttente.map((p) => (
+                    <Link
+                      key={p.id}
+                      href="/administratif"
+                      className="flex items-center justify-between rounded-[var(--radius-sm)] px-2 py-1.5 text-sm hover:bg-surface-muted"
+                    >
+                      <span className="font-medium">
+                        {p.patient.prenom} {p.patient.nom}
+                      </span>
+                      <span className="text-xs text-muted">{formatCurrency(p.montant)}</span>
+                    </Link>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted">Un virement SEPA prend quelques jours à se confirmer — normal, rien à faire.</p>
+              </CardContent>
+            </Card>
+          )}
+          {(prelevementsReussisMois._count._all ?? 0) > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-success" />
+                  <h3 className="text-sm font-semibold">Prélevés avec succès (30 derniers jours)</h3>
+                  <Badge variant="success">{prelevementsReussisMois._count._all}</Badge>
+                </div>
+                <p className="text-2xl font-semibold">{formatCurrency(prelevementsReussisMois._sum.montant ?? 0)}</p>
+                <Link href="/administratif" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  Voir le détail <ArrowRight className="h-3 w-3" />
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {totalPatients === 0 && (
         <Card className="mt-6">
           <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
@@ -286,7 +373,15 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
   );
 }
 
-function AlertCard({ title, items }: { title: string; items: { id: string; label: string; sub: string }[] }) {
+function AlertCard({
+  title,
+  items,
+  hrefPrefix = "/patients",
+}: {
+  title: string;
+  items: { id: string; label: string; sub: string }[];
+  hrefPrefix?: string;
+}) {
   return (
     <Card>
       <CardContent className="p-5">
@@ -299,7 +394,7 @@ function AlertCard({ title, items }: { title: string; items: { id: string; label
           {items.map((item) => (
             <Link
               key={item.id}
-              href={`/patients/${item.id}`}
+              href={hrefPrefix === "/patients" ? `/patients/${item.id}` : hrefPrefix}
               className="flex items-center justify-between rounded-[var(--radius-sm)] px-2 py-1.5 text-sm hover:bg-surface-muted"
             >
               <span className="font-medium">{item.label}</span>

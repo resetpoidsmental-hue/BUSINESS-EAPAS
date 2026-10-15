@@ -1,9 +1,83 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getPatientSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MEAL_KEYS, type MealKey } from "@/lib/categories-ration";
+import { creerSessionPremierPaiement, creerSessionMiseAJourCarte, stripeDisponible } from "@/lib/stripe";
+
+export interface PaiementActionState {
+  error?: string;
+}
+
+export async function demarrerEnregistrementCarteAction(
+  _prev: PaiementActionState,
+  _formData: FormData
+): Promise<PaiementActionState> {
+  const session = await getPatientSession();
+  if (!session) return { error: "Session expirée, reconnecte-toi." };
+  if (!stripeDisponible()) return { error: "Le paiement en ligne n'est pas encore configuré — contacte ton coach." };
+
+  const abonnement = await prisma.abonnement.findUnique({
+    where: { patientId: session.patientId },
+    include: { patient: { select: { email: true } } },
+  });
+  if (!abonnement) return { error: "Aucun abonnement actif n'a été trouvé." };
+
+  let url: string;
+  try {
+    url = await creerSessionPremierPaiement({
+      abonnementId: abonnement.id,
+      patientId: session.patientId,
+      patientEmail: abonnement.patient.email,
+      montant: abonnement.montantMensuel,
+      formule: abonnement.formule,
+      stripeCustomerId: abonnement.stripeCustomerId,
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Impossible de démarrer le paiement." };
+  }
+
+  redirect(url);
+}
+
+export async function demarrerMiseAJourCarteAction(
+  _prev: PaiementActionState,
+  _formData: FormData
+): Promise<PaiementActionState> {
+  const session = await getPatientSession();
+  if (!session) return { error: "Session expirée, reconnecte-toi." };
+  if (!stripeDisponible()) return { error: "Le paiement en ligne n'est pas encore configuré — contacte ton coach." };
+
+  const abonnement = await prisma.abonnement.findUnique({ where: { patientId: session.patientId } });
+  if (!abonnement || !abonnement.stripeCustomerId) {
+    return { error: "Enregistre d'abord un moyen de paiement avant de pouvoir le modifier." };
+  }
+
+  let url: string;
+  try {
+    url = await creerSessionMiseAJourCarte({
+      abonnementId: abonnement.id,
+      patientId: session.patientId,
+      stripeCustomerId: abonnement.stripeCustomerId,
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Impossible de démarrer la mise à jour." };
+  }
+
+  redirect(url);
+}
+
+export async function suspendrePrelevementAction() {
+  const session = await getPatientSession();
+  if (!session) return;
+  await prisma.abonnement.updateMany({
+    where: { patientId: session.patientId },
+    data: { prelevementActif: false },
+  });
+  revalidatePath("/portail/paiement");
+}
 
 export async function marquerMaterielVu(seanceId: string) {
   const session = await getPatientSession();

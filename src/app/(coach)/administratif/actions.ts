@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { genererConditionsAnnulation, assistantIADisponible } from "@/lib/ai";
+import { prelieverAbonnement, stripeDisponible } from "@/lib/stripe";
+import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 
 export interface ActionState {
   error?: string;
@@ -225,5 +227,94 @@ export async function marquerPaiementRecu(patientId: string) {
     where: { patientId },
     data: { dateDernierPaiement: now, prochainPaiement: prochain, statutPaiement: "À jour" },
   });
+  revalidatePath("/administratif");
+}
+
+export interface PrelevementActionState {
+  error?: string;
+  success?: string;
+}
+
+export async function relancerPrelevementAction(
+  prelevementId: string,
+  _prev: PrelevementActionState,
+  _formData: FormData
+): Promise<PrelevementActionState> {
+  if (!stripeDisponible()) return { error: "Stripe n'est pas configuré." };
+
+  const prelevement = await prisma.prelevement.findUnique({ where: { id: prelevementId }, include: { abonnement: true } });
+  if (!prelevement) return { error: "Prélèvement introuvable." };
+  const abonnement = prelevement.abonnement;
+  if (!abonnement.stripeCustomerId || !abonnement.stripePaymentMethodId) {
+    return { error: "Aucun moyen de paiement enregistré pour ce client." };
+  }
+
+  const resultat = await prelieverAbonnement({
+    stripeCustomerId: abonnement.stripeCustomerId,
+    stripePaymentMethodId: abonnement.stripePaymentMethodId,
+    montant: prelevement.montant,
+    formule: abonnement.formule,
+    abonnementId: abonnement.id,
+    patientId: prelevement.patientId,
+  });
+
+  const statut = resultat.succes ? "Réussi" : resultat.enAttente ? "En attente" : "Échec";
+  await prisma.prelevement.update({
+    where: { id: prelevementId },
+    data: { statut, motifEchec: resultat.motifEchec, stripePaymentIntentId: resultat.stripePaymentIntentId || null },
+  });
+
+  if (prelevement.factureId) {
+    await prisma.facture.update({
+      where: { id: prelevement.factureId },
+      data: resultat.succes ? { statut: "Payée", datePaiement: new Date() } : {},
+    });
+  }
+
+  if (resultat.succes) {
+    const prochain = new Date();
+    prochain.setMonth(prochain.getMonth() + 1);
+    await prisma.abonnement.update({
+      where: { id: abonnement.id },
+      data: { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" },
+    });
+    if (prelevement.factureId) {
+      const facture = await prisma.facture.findUnique({ where: { id: prelevement.factureId } });
+      if (facture) {
+        await envoyerRecuFactureSiPossible({
+          factureId: facture.id,
+          patientId: prelevement.patientId,
+          numero: facture.numero,
+          montant: prelevement.montant,
+        });
+      }
+    }
+  }
+
+  revalidatePath("/administratif");
+  return resultat.succes
+    ? { success: "Prélèvement réussi." }
+    : resultat.enAttente
+      ? { success: "Prélèvement en cours (SEPA) — confirmation à venir." }
+      : { error: resultat.motifEchec ?? "Le prélèvement a échoué à nouveau." };
+}
+
+export async function marquerPrelevementRegleManuellementAction(prelevementId: string) {
+  const prelevement = await prisma.prelevement.findUnique({ where: { id: prelevementId } });
+  if (!prelevement) return;
+
+  await prisma.prelevement.update({ where: { id: prelevementId }, data: { statut: "Réussi", motifEchec: null } });
+
+  if (prelevement.factureId) {
+    await prisma.facture.update({ where: { id: prelevement.factureId }, data: { statut: "Payée", datePaiement: new Date() } });
+  }
+
+  const prochain = new Date();
+  prochain.setMonth(prochain.getMonth() + 1);
+  await prisma.abonnement.update({
+    where: { id: prelevement.abonnementId },
+    data: { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" },
+  });
+
   revalidatePath("/administratif");
 }

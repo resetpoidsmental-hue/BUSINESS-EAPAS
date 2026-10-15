@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Activity, FileText, LogOut, NotebookPen, UtensilsCrossed } from "lucide-react";
+import { LayoutDashboard, Activity, FileText, LogOut, NotebookPen, UtensilsCrossed, CreditCard } from "lucide-react";
 import { getPatientSession, destroyPatientSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { initials } from "@/lib/utils";
@@ -47,6 +47,7 @@ export default async function PortailLayout({ children }: { children: React.Reac
           <NavLink href="/portail/nutrition" icon={UtensilsCrossed} label="Mon menu" />
           <NavLink href="/portail/bilans" icon={Activity} label="Mes bilans" />
           <NavLink href="/portail/factures" icon={FileText} label="Mes factures" />
+          <NavLink href="/portail/paiement" icon={CreditCard} label="Mon paiement" />
         </nav>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
