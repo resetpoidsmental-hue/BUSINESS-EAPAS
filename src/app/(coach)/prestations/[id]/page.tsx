@@ -26,6 +26,7 @@ export default async function PrestationDetailPage({ params }: { params: Promise
           unite: prestation.unite,
           dureeSemaines: prestation.dureeSemaines,
           inclusions: prestation.inclusions,
+          descriptionMarketing: prestation.descriptionMarketing,
         }}
       />
     </div>

@@ -635,3 +635,64 @@ export async function genererPropositionOffre({
 
   return parsePropositionOffre(parsed);
 }
+
+const DESCRIPTION_MARKETING_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant. Il te donne les caractéristiques réelles d'une prestation de son catalogue et te demande
+une description commerciale courte, destinée à être lue par un client ou prospect dans un devis ou un contrat, pour
+qu'il comprenne concrètement ce qu'il va recevoir et ait envie de s'engager.
+
+Règles impératives, toujours respectées :
+- Tu ne décris QUE ce qui figure dans les inclusions, le type et le tarif fournis — jamais une prestation, un chiffre
+  ou un avantage qui n'y figure pas. Tu peux reformuler et valoriser, jamais inventer un fait.
+- Ton engageant, chaleureux et concret (bénéfices pour le client, pas de jargon technique), 2 à 4 phrases, en français.
+- Jamais de promesse de résultat médical ou garanti (pas de "tu vas guérir", "résultats garantis").
+- Réponds UNIQUEMENT avec le texte de la description, sans titre, sans guillemets, sans balises autour.`;
+
+export async function genererDescriptionMarketing({
+  nom,
+  type,
+  tarif,
+  unite,
+  inclusions,
+}: {
+  nom: string;
+  type: string;
+  tarif: number;
+  unite: string;
+  inclusions: string;
+}): Promise<string> {
+  const texte = await appelerClaudeTexte({
+    system: DESCRIPTION_MARKETING_SYSTEM_PROMPT,
+    userContent: `Prestation : ${nom} (${type})\nTarif : ${tarif} € / ${unite}\nInclusions :\n${inclusions || "(aucune précisée)"}\n\nRédige la description commerciale.`,
+    maxTokens: 400,
+  });
+  return texte;
+}
+
+const CONDITIONS_ANNULATION_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant. Il rédige un contrat de prestation et te demande de proposer un texte pour les
+conditions d'annulation et de report des séances, à partir de la formule et de la durée d'engagement choisies.
+
+Règles impératives, toujours respectées :
+- Reste raisonnable et équilibré (ni trop strict, ni sans aucune protection pour le coach) : un délai de prévenance
+  courant (24h) et le principe que les séances déjà réalisées restent dues en cas d'arrêt anticipé.
+- N'invente aucun chiffre qui ne figure pas dans ce qui est fourni (tarif, durée d'engagement) — reprends-les tels quels.
+- Ton clair, professionnel, en français, 2 à 3 phrases.
+- Réponds UNIQUEMENT avec le texte des conditions, sans titre, sans guillemets, sans balises autour.`;
+
+export async function genererConditionsAnnulation({
+  formule,
+  dureeMois,
+  tarif,
+}: {
+  formule: string;
+  dureeMois: number | null;
+  tarif: number | null;
+}): Promise<string> {
+  const texte = await appelerClaudeTexte({
+    system: CONDITIONS_ANNULATION_SYSTEM_PROMPT,
+    userContent: `Formule souscrite : ${formule}\nDurée d'engagement : ${dureeMois ? `${dureeMois} mois` : "non précisée"}\nTarif : ${tarif ? `${tarif} €` : "non précisé"}\n\nRédige les conditions d'annulation.`,
+    maxTokens: 300,
+  });
+  return texte;
+}

@@ -2,10 +2,38 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { genererConditionsAnnulation, assistantIADisponible } from "@/lib/ai";
 
 export interface ActionState {
   error?: string;
   success?: string;
+}
+
+export interface ConditionsAnnulationState {
+  error?: string;
+  conditions?: string;
+}
+
+export async function genererConditionsAnnulationAction(
+  _prev: ConditionsAnnulationState,
+  formData: FormData
+): Promise<ConditionsAnnulationState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+  const formule = str(formData, "formule");
+  if (!formule) return { error: "Indique au moins la formule avant de générer les conditions." };
+
+  try {
+    const conditions = await genererConditionsAnnulation({
+      formule,
+      dureeMois: num(formData, "dureeMois"),
+      tarif: num(formData, "tarif"),
+    });
+    return { conditions };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
 }
 
 function str(formData: FormData, key: string) {
@@ -20,23 +48,27 @@ function num(formData: FormData, key: string) {
 
 interface LigneInput {
   designation: string;
+  description?: string;
   quantite: number;
   prixUnitaire: number;
 }
 
 function parseLignes(formData: FormData): LigneInput[] {
   const designations = formData.getAll("ligne_designation") as string[];
+  const descriptions = formData.getAll("ligne_description") as string[];
   const quantites = formData.getAll("ligne_quantite") as string[];
   const prix = formData.getAll("ligne_prix") as string[];
 
   const lignes: LigneInput[] = [];
   for (let i = 0; i < designations.length; i++) {
     if (!designations[i]?.trim()) continue;
-    lignes.push({
+    const ligne: LigneInput = {
       designation: designations[i].trim(),
       quantite: Number(quantites[i]) || 1,
       prixUnitaire: Number(prix[i]) || 0,
-    });
+    };
+    if (descriptions[i]?.trim()) ligne.description = descriptions[i].trim();
+    lignes.push(ligne);
   }
   return lignes;
 }
@@ -95,6 +127,7 @@ export async function createContrat(_prev: ActionState, formData: FormData): Pro
       numero,
       patientId,
       formule: str(formData, "formule"),
+      descriptionFormule: str(formData, "descriptionFormule"),
       inclusions: str(formData, "inclusions"),
       dureeMois: num(formData, "dureeMois"),
       frequenceSeances: str(formData, "frequenceSeances"),

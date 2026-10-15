@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       settings,
       patient: contrat.patient,
       formule: contrat.formule,
+      descriptionFormule: contrat.descriptionFormule,
       inclusions: contrat.inclusions,
       dureeMois: contrat.dureeMois,
       frequenceSeances: contrat.frequenceSeances,

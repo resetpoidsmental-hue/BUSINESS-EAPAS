@@ -221,6 +221,7 @@ model Contrat {
   patient               Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   dateDebut             DateTime  @default(now())
   formule               String?
+  descriptionFormule    String?
   inclusions            String?
   dureeMois             Int?
   frequenceSeances      String?
@@ -320,17 +321,18 @@ model PatientAccess {
 }
 
 model Prestation {
-  id            String     @id @default(cuid())
-  nom           String
-  type          String
-  tarif         Float
-  unite         String
-  dureeSemaines Int?
-  inclusions    String?
-  actif         Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  prospects     Prospect[]
+  id                  String     @id @default(cuid())
+  nom                 String
+  type                String
+  tarif               Float
+  unite               String
+  dureeSemaines       Int?
+  inclusions          String?
+  descriptionMarketing String?
+  actif               Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  prospects           Prospect[]
 }
 
 model Prospect {

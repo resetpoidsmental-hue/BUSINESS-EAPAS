@@ -2,10 +2,55 @@ import { StyleSheet } from "@react-pdf/renderer";
 
 export const pdfStyles = StyleSheet.create({
   page: {
-    padding: 40,
+    paddingTop: 0,
+    paddingBottom: 70,
+    paddingHorizontal: 0,
     fontSize: 10,
     fontFamily: "Helvetica",
     color: "#14201b",
+  },
+  body: {
+    paddingHorizontal: 40,
+    paddingTop: 20,
+  },
+  bandHeader: {
+    backgroundColor: "#0f7a5f",
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  bandLogo: {
+    width: 90,
+    height: 30.1,
+  },
+  bandTitle: {
+    fontSize: 20,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+  },
+  footer: {
+    position: "absolute",
+    bottom: 24,
+    left: 40,
+    right: 40,
+    borderTopWidth: 1,
+    borderTopColor: "#e3e8e4",
+    paddingTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  footerLogo: {
+    width: 16,
+    height: 5.36,
+  },
+  footerText: {
+    fontSize: 7.5,
+    color: "#5b6b64",
   },
   headerRow: {
     flexDirection: "row",
@@ -96,14 +141,5 @@ export const pdfStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#14201b",
     paddingTop: 6,
-  },
-  footer: {
-    position: "absolute",
-    bottom: 30,
-    left: 40,
-    right: 40,
-    fontSize: 8,
-    color: "#5b6b64",
-    textAlign: "center",
   },
 });

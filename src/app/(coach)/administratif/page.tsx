@@ -9,13 +9,18 @@ import { LivreDeComptes } from "./components/livre-comptes";
 import { ModelesMessages } from "./components/modeles-messages";
 
 export default async function AdministratifPage() {
-  const [patients, devis, contrats, factures, abonnements, settings] = await Promise.all([
+  const [patients, devis, contrats, factures, abonnements, settings, prestations] = await Promise.all([
     prisma.patient.findMany({ select: { id: true, nom: true, prenom: true }, orderBy: { nom: "asc" } }),
     prisma.devis.findMany({ include: { patient: { select: { nom: true, prenom: true } } }, orderBy: { date: "desc" } }),
     prisma.contrat.findMany({ include: { patient: { select: { nom: true, prenom: true } } }, orderBy: { dateDebut: "desc" } }),
     prisma.facture.findMany({ include: { patient: { select: { nom: true, prenom: true } } }, orderBy: { date: "desc" } }),
     prisma.abonnement.findMany({ include: { patient: { select: { nom: true, prenom: true } } }, orderBy: { dateDebut: "desc" } }),
     prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } }),
+    prisma.prestation.findMany({
+      where: { actif: true },
+      orderBy: { nom: "asc" },
+      select: { id: true, nom: true, type: true, tarif: true, unite: true, inclusions: true, descriptionMarketing: true },
+    }),
   ]);
 
   const facturesPayees = factures.filter((f) => f.statut === "Payée");
@@ -38,10 +43,10 @@ export default async function AdministratifPage() {
           <FactureSection patients={patients} factures={factures} />
         </TabsContent>
         <TabsContent value="devis">
-          <DevisSection patients={patients} devis={devis} />
+          <DevisSection patients={patients} devis={devis} prestations={prestations} />
         </TabsContent>
         <TabsContent value="contrats">
-          <ContratSection patients={patients} contrats={contrats} />
+          <ContratSection patients={patients} contrats={contrats} prestations={prestations} />
         </TabsContent>
         <TabsContent value="abonnements">
           <AbonnementsSection patients={patients} abonnements={abonnements} />

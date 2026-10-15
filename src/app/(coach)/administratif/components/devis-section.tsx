@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { LignesEditor } from "./lignes-editor";
+import { LignesEditor, type PrestationCatalogue } from "./lignes-editor";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Download } from "lucide-react";
 
@@ -29,7 +29,15 @@ interface DevisItem {
   patient: { nom: string; prenom: string };
 }
 
-export function DevisSection({ patients, devis }: { patients: PatientOption[]; devis: DevisItem[] }) {
+export function DevisSection({
+  patients,
+  devis,
+  prestations,
+}: {
+  patients: PatientOption[];
+  devis: DevisItem[];
+  prestations: PrestationCatalogue[];
+}) {
   const [state, formAction, pending] = useActionState(createDevis, initialState);
 
   return (
@@ -55,7 +63,7 @@ export function DevisSection({ patients, devis }: { patients: PatientOption[]; d
                 <Input id="validiteJours" name="validiteJours" type="number" defaultValue={30} />
               </div>
             </div>
-            <LignesEditor />
+            <LignesEditor prestations={prestations} />
             {state.error && <p className="text-sm text-danger">{state.error}</p>}
             {state.success && <p className="text-sm text-success">{state.success}</p>}
             <div className="flex justify-end">

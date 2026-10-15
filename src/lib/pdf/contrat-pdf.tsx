@@ -1,5 +1,8 @@
-import { Document, Page, View, Text } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image } from "@react-pdf/renderer";
+import path from "node:path";
 import { pdfStyles as s } from "./styles";
+
+const LOGO = path.join(process.cwd(), "public", "branding", "logo-sante-co.png");
 
 interface Settings {
   nomEntreprise: string;
@@ -23,6 +26,7 @@ export function ContratPDF({
   settings,
   patient,
   formule,
+  descriptionFormule,
   inclusions,
   dureeMois,
   frequenceSeances,
@@ -35,6 +39,7 @@ export function ContratPDF({
   settings: Settings;
   patient: Patient;
   formule: string | null;
+  descriptionFormule: string | null;
   inclusions: string | null;
   dureeMois: number | null;
   frequenceSeances: string | null;
@@ -46,7 +51,12 @@ export function ContratPDF({
   return (
     <Document>
       <Page size="A4" style={s.page}>
-        <Text style={s.title}>CONTRAT DE PRESTATION APA</Text>
+        <View style={s.bandHeader} fixed>
+          <Image src={LOGO} style={s.bandLogo} />
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#ffffff" }}>CONTRAT DE PRESTATION APA</Text>
+        </View>
+
+        <View style={s.body}>
         <Text style={s.meta}>N° {numero} — Fait le {formatFR(dateDebut)}</Text>
         <Text style={[s.paragraph, { marginTop: 12 }]}>
           Accompagnement en Activité Physique Adaptée et Santé — hors cadre médical, obligation de moyens et non de
@@ -68,6 +78,7 @@ export function ContratPDF({
           Le présent contrat a pour objet la mise en place d&apos;un accompagnement en activité physique adaptée,
           sous forme de séances individuelles et/ou collectives, définies avec le Client lors de l&apos;entretien
           initial. Le Client souscrit à la formule : {formule || "à définir"}.
+          {descriptionFormule ? ` ${descriptionFormule}` : ""}
         </Text>
         {inclusionsList.length > 0 && (
           <View style={{ marginBottom: 10 }}>
@@ -143,6 +154,14 @@ export function ContratPDF({
           <View style={s.signatureBox}>
             <Text>Le Client</Text>
           </View>
+        </View>
+        </View>
+
+        <View style={s.footer} fixed>
+          <Image src={LOGO} style={s.footerLogo} />
+          <Text style={s.footerText}>
+            Santé &amp; Co — sante-and-co.com — © {dateDebut.getFullYear()} — Tous droits réservés
+          </Text>
         </View>
       </Page>
     </Document>

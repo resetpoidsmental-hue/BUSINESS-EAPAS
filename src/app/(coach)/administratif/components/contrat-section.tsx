@@ -1,7 +1,12 @@
 "use client";
 
-import { useActionState, useRef } from "react";
-import { createContrat, type ActionState } from "../actions";
+import { useActionState, useRef, useState } from "react";
+import {
+  createContrat,
+  genererConditionsAnnulationAction,
+  type ActionState,
+  type ConditionsAnnulationState,
+} from "../actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,9 +15,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Download } from "lucide-react";
+import { Download, Sparkles, LayoutGrid } from "lucide-react";
+import type { PrestationCatalogue } from "./lignes-editor";
 
 const initialState: ActionState = {};
+const initialConditionsState: ConditionsAnnulationState = {};
 
 interface PatientOption {
   id: string;
@@ -29,64 +36,100 @@ interface ContratItem {
   patient: { nom: string; prenom: string };
 }
 
-const PRESETS = {
-  essentiel: {
-    formule: "Formule 1 : Essentiel Santé & Forme",
-    dureeMois: 3,
-    frequenceSeances: "4 séances / mois (1/semaine)",
-    tarif: 220,
-    inclusions:
-      "Bilan initial complet : évaluation fonctionnelle APA (tests de terrain) et diagnostic nutritionnel\n4 séances d'APA guidées par mois (1 séance/semaine)\n1 programme d'entraînement autonome personnalisé pour la pratique à domicile\nCoaching nutritionnel de base (repères PNNS/ANSES, conseils repas)\n1 entretien de suivi mensuel de 30 min (ajustement des objectifs SMART)",
-  },
-  premium: {
-    formule: "Formule 2 : Premium Transformation & Suivi Intensif",
-    dureeMois: 3,
-    frequenceSeances: "8 séances / mois (2/semaine)",
-    tarif: 350,
-    inclusions:
-      "Bilan initial & re-bilans mensuels approfondis (tests de marche 6 min, lever de chaise, diagnostic nutritionnel)\n8 séances d'APA guidées sur-mesure par mois (2 séances/semaine)\nPlan alimentaire personnalisé et évolutif (macronutriments, anti-grignotage)\nSuivi continu par messagerie dédiée (5j/7, réponse sous 24h)\nAteliers éducatifs thématiques (étiquettes, courses, sorties)",
-  },
-} as const;
-
-export function ContratSection({ patients, contrats }: { patients: PatientOption[]; contrats: ContratItem[] }) {
+export function ContratSection({
+  patients,
+  contrats,
+  prestations,
+}: {
+  patients: PatientOption[];
+  contrats: ContratItem[];
+  prestations: PrestationCatalogue[];
+}) {
   const [state, formAction, pending] = useActionState(createContrat, initialState);
+  const [conditionsState, conditionsFormAction, conditionsPending] = useActionState(
+    genererConditionsAnnulationAction,
+    initialConditionsState
+  );
 
   const formuleRef = useRef<HTMLInputElement>(null);
+  const descriptionFormuleRef = useRef<HTMLTextAreaElement>(null);
   const dureeRef = useRef<HTMLInputElement>(null);
   const frequenceRef = useRef<HTMLInputElement>(null);
   const tarifRef = useRef<HTMLInputElement>(null);
   const inclusionsRef = useRef<HTMLTextAreaElement>(null);
+  const conditionsRef = useRef<HTMLTextAreaElement>(null);
 
-  function applyPreset(preset: {
-    formule: string;
-    dureeMois: number;
-    frequenceSeances: string;
-    tarif: number;
-    inclusions: string;
-  }) {
-    if (formuleRef.current) formuleRef.current.value = preset.formule;
-    if (dureeRef.current) dureeRef.current.value = String(preset.dureeMois);
-    if (frequenceRef.current) frequenceRef.current.value = preset.frequenceSeances;
-    if (tarifRef.current) tarifRef.current.value = String(preset.tarif);
-    if (inclusionsRef.current) inclusionsRef.current.value = preset.inclusions;
+  const [catalogueOuvert, setCatalogueOuvert] = useState(false);
+  const [recherche, setRecherche] = useState("");
+
+  function appliquerPrestation(p: PrestationCatalogue) {
+    if (formuleRef.current) formuleRef.current.value = p.nom;
+    if (descriptionFormuleRef.current) descriptionFormuleRef.current.value = p.descriptionMarketing ?? "";
+    if (tarifRef.current) tarifRef.current.value = String(p.tarif);
+    if (inclusionsRef.current) inclusionsRef.current.value = "";
+    setCatalogueOuvert(false);
+    setRecherche("");
   }
+
+  function demanderConditions() {
+    const fd = new FormData();
+    fd.set("formule", formuleRef.current?.value ?? "");
+    fd.set("dureeMois", dureeRef.current?.value ?? "");
+    fd.set("tarif", tarifRef.current?.value ?? "");
+    conditionsFormAction(fd);
+  }
+
+  function utiliserConditions() {
+    if (conditionsRef.current && conditionsState.conditions) {
+      conditionsRef.current.value = conditionsState.conditions;
+    }
+  }
+
+  const prestationsFiltrees = prestations.filter((p) => `${p.nom} ${p.type}`.toLowerCase().includes(recherche.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
         <CardContent className="p-5">
           <form action={formAction} className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Nouveau contrat de prestation</p>
-              <div className="flex gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => applyPreset(PRESETS.essentiel)}>
-                  Préremplir « Essentiel » (220€)
-                </Button>
-                <Button type="button" size="sm" variant="secondary" onClick={() => applyPreset(PRESETS.premium)}>
-                  Préremplir « Premium » (350€)
-                </Button>
+            <p className="text-sm font-semibold">Nouveau contrat de prestation</p>
+
+            {prestations.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted">
+                    Choisir une prestation du catalogue (optionnel — pré-remplit les champs ci-dessous)
+                  </span>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setCatalogueOuvert((v) => !v)}>
+                    <LayoutGrid className="h-3.5 w-3.5" /> Catalogue {catalogueOuvert ? "▴" : "▾"}
+                  </Button>
+                </div>
+                {catalogueOuvert && (
+                  <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-primary bg-surface p-2.5">
+                    <Input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher une prestation…" className="mb-1 h-8" />
+                    <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
+                      {prestationsFiltrees.length === 0 && <p className="p-1.5 text-xs text-muted">Aucune prestation active ne correspond.</p>}
+                      {prestationsFiltrees.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => appliquerPrestation(p)}
+                          className="flex items-center justify-between rounded-[var(--radius-sm)] px-2 py-1.5 text-left hover:bg-primary-soft"
+                        >
+                          <span className="text-xs text-foreground">
+                            {p.nom} <span className="text-muted">· {p.type}</span>
+                          </span>
+                          <span className="text-xs font-bold text-primary-hover">
+                            {formatCurrency(p.tarif)} / {p.unite}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="patientId">Client</Label>
@@ -120,6 +163,19 @@ export function ContratSection({ patients, contrats }: { patients: PatientOption
                 <Input id="modalitePaiement" name="modalitePaiement" placeholder="Virement mensuel" />
               </div>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="descriptionFormule">Description de la formule (Article 1 du contrat)</Label>
+              <p className="text-xs text-muted">Détaille ce que le Client souscrit — pré-rempli en choisissant une prestation du catalogue, modifiable.</p>
+              <Textarea
+                id="descriptionFormule"
+                name="descriptionFormule"
+                ref={descriptionFormuleRef}
+                rows={3}
+                placeholder="Un accompagnement mensuel sur-mesure…"
+              />
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="inclusions">Inclusions de la formule (une par ligne)</Label>
               <Textarea
@@ -132,15 +188,42 @@ export function ContratSection({ patients, contrats }: { patients: PatientOption
                 }
               />
             </div>
+
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="conditionsAnnulation">Conditions d&apos;annulation</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="conditionsAnnulation">Conditions d&apos;annulation</Label>
+                <Button type="button" size="sm" variant="secondary" onClick={demanderConditions} disabled={conditionsPending}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {conditionsPending ? "Génération…" : "Assistant IA — proposer un texte"}
+                </Button>
+              </div>
               <Textarea
                 id="conditionsAnnulation"
                 name="conditionsAnnulation"
+                ref={conditionsRef}
                 rows={2}
                 placeholder="Toute séance annulée moins de 24h avant reste due, sauf cas de force majeure."
               />
+              {conditionsState.error && <p className="text-sm text-danger">{conditionsState.error}</p>}
+              {conditionsState.conditions && (
+                <div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-dashed border-primary bg-primary-soft/40 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-primary">Proposition IA</span>
+                  </div>
+                  <p className="text-xs leading-snug text-foreground">{conditionsState.conditions}</p>
+                  <p className="text-[11px] italic text-muted">
+                    Rédigé à partir de la formule et de la durée choisies — à relire avant signature, jamais envoyé sans ta validation.
+                  </p>
+                  <div>
+                    <Button type="button" size="sm" onClick={utiliserConditions}>
+                      Utiliser cette proposition
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
+
             {state.error && <p className="text-sm text-danger">{state.error}</p>}
             {state.success && <p className="text-sm text-success">{state.success}</p>}
             <div className="flex justify-end">

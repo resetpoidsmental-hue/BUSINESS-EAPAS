@@ -3,10 +3,45 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { genererDescriptionMarketing, assistantIADisponible } from "@/lib/ai";
 
 export interface ActionState {
   error?: string;
   success?: string;
+}
+
+export interface DescriptionMarketingState {
+  error?: string;
+  description?: string;
+}
+
+export async function genererDescriptionMarketingAction(
+  _prev: DescriptionMarketingState,
+  formData: FormData
+): Promise<DescriptionMarketingState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+  const nom = str(formData, "nom");
+  const type = str(formData, "type");
+  const tarif = num(formData, "tarif");
+  const unite = str(formData, "unite");
+  if (!nom || !type || tarif === null || !unite) {
+    return { error: "Remplis au moins le nom, le type, le tarif et l'unité avant de générer une description." };
+  }
+
+  try {
+    const description = await genererDescriptionMarketing({
+      nom,
+      type,
+      tarif,
+      unite,
+      inclusions: str(formData, "inclusions") ?? "",
+    });
+    return { description };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
 }
 
 function str(formData: FormData, key: string) {
@@ -37,6 +72,7 @@ export async function creerPrestationAction(_prev: ActionState, formData: FormDa
       unite,
       dureeSemaines: num(formData, "dureeSemaines"),
       inclusions: str(formData, "inclusions"),
+      descriptionMarketing: str(formData, "descriptionMarketing"),
     },
   });
 
@@ -67,6 +103,7 @@ export async function modifierPrestationAction(
       unite,
       dureeSemaines: num(formData, "dureeSemaines"),
       inclusions: str(formData, "inclusions"),
+      descriptionMarketing: str(formData, "descriptionMarketing"),
     },
   });
 
