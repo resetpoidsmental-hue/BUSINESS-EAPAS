@@ -630,7 +630,7 @@ export async function genererPropositionOffre({
   const parsed = await appelerClaudeJSON({
     system: PROPOSITION_OFFRE_SYSTEM_PROMPT,
     userContent: `Notes de Découverte prises pendant l'appel :\n${decouverte}\n\nCatalogue de prestations actives (choisir UNIQUEMENT parmi celles-ci) :\n${cataloguetexte || "(aucune)"}\n\nSchéma JSON attendu :\n${PROPOSITION_OFFRE_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
-    maxTokens: 800,
+    maxTokens: 1200,
   });
 
   return parsePropositionOffre(parsed);
@@ -664,7 +664,7 @@ export async function genererDescriptionMarketing({
   const texte = await appelerClaudeTexte({
     system: DESCRIPTION_MARKETING_SYSTEM_PROMPT,
     userContent: `Prestation : ${nom} (${type})\nTarif : ${tarif} € / ${unite}\nInclusions :\n${inclusions || "(aucune précisée)"}\n\nRédige la description commerciale.`,
-    maxTokens: 400,
+    maxTokens: 1000,
   });
   return texte;
 }
@@ -692,7 +692,7 @@ export async function genererConditionsAnnulation({
   const texte = await appelerClaudeTexte({
     system: CONDITIONS_ANNULATION_SYSTEM_PROMPT,
     userContent: `Formule souscrite : ${formule}\nDurée d'engagement : ${dureeMois ? `${dureeMois} mois` : "non précisée"}\nTarif : ${tarif ? `${tarif} €` : "non précisé"}\n\nRédige les conditions d'annulation.`,
-    maxTokens: 300,
+    maxTokens: 1000,
   });
   return texte;
 }
