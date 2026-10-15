@@ -16,6 +16,8 @@ const TYPES_SUGGERES = [
   "Abonnement",
   "Programme",
   "À la carte",
+  "Offre de bienvenue",
+  "Nutrition avec suivi",
   "Collectif",
   "Téléconsultation",
   "Bilan seul",

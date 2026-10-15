@@ -558,3 +558,80 @@ export async function genererResumeAppel({
 
   return parseResumeAppel(parsed);
 }
+
+const PROPOSITION_OFFRE_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant, en plein appel de découverte avec un prospect. Le coach a déjà noté, en direct, les
+réponses du prospect à l'étape "Découverte" de son script (ce qui l'amène, ce qu'il a déjà essayé, son objectif, ses
+disponibilités). Il coche maintenant les étapes "Reformulation" et "Offre ciblée" de son script et te demande une
+proposition de texte à dire, qu'il pourra modifier ou valider avant de le dire au prospect.
+
+Règles impératives, toujours respectées :
+- La "reformulation" ne reprend QUE des éléments présents dans les notes de Découverte fournies — jamais de détail
+  inventé ou supposé. Phrase naturelle à l'oral, dans l'esprit de "Si je résume : tu veux ..., tu as essayé ...,
+  tu peux te dégager ... . C'est bien ça ?", sans les crochets du script.
+- La "prestationNom" doit être recopiée EXACTEMENT parmi la liste des prestations actives fournie (jamais inventée,
+  jamais un nom approché) — choisis celle qui correspond le mieux à l'objectif et aux disponibilités du prospect. Si
+  aucune ne correspond clairement, reprends quand même la plus proche de la liste (jamais de prestation hors liste).
+- Le "formulePresentee" est une phrase naturelle à l'oral présentant cette prestation et reprenant 1 ou 2 de ses
+  inclusions fournies (jamais une inclusion inventée), dans l'esprit de "Vu ce que tu me dis, je pense à [formule] :
+  [1-2 inclusions]."
+- Le "tarifEtModalites" reprend LE TARIF ET L'UNITÉ EXACTS de la prestation choisie, tels que fournis (jamais un
+  chiffre inventé ou arrondi différemment), suivi d'une courte précision sur le rythme/la durée si elle découle des
+  notes de Découverte, dans l'esprit de "C'est [tarif] et ça se passe [fréquence/durée]."
+- Reste bref, naturel à l'oral, et neutre — jamais de jugement sur le prospect.
+- Réponds UNIQUEMENT avec du JSON brut valide, sans texte autour, sans balises de code, selon le schéma donné.`;
+
+const PROPOSITION_OFFRE_SCHEMA = `{
+  "reformulation": string (phrase de reformulation fidèle aux notes de Découverte fournies),
+  "prestationNom": string (nom EXACT d'une prestation de la liste fournie),
+  "formulePresentee": string (phrase présentant cette prestation + 1-2 inclusions réelles),
+  "tarifEtModalites": string (tarif et unité EXACTS de la prestation choisie + modalités courtes)
+}`;
+
+export interface PropositionOffre {
+  reformulation: string;
+  prestationNom: string;
+  formulePresentee: string;
+  tarifEtModalites: string;
+}
+
+function parsePropositionOffre(parsed: unknown): PropositionOffre {
+  const p = (parsed ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  return {
+    reformulation: str(p.reformulation),
+    prestationNom: str(p.prestationNom),
+    formulePresentee: str(p.formulePresentee),
+    tarifEtModalites: str(p.tarifEtModalites),
+  };
+}
+
+export interface PrestationPourProposition {
+  nom: string;
+  type: string;
+  tarif: number;
+  unite: string;
+  inclusions: string | null;
+}
+
+export async function genererPropositionOffre({
+  decouverte,
+  prestationsActives,
+}: {
+  /** Notes de l'étape Découverte, assemblées question par question. */
+  decouverte: string;
+  /** Prestations actives du catalogue, avec leur tarif réel — jamais inventé par l'IA. */
+  prestationsActives: PrestationPourProposition[];
+}): Promise<PropositionOffre> {
+  const cataloguetexte = prestationsActives
+    .map((p) => `- ${p.nom} (${p.type}) : ${p.tarif} € / ${p.unite}${p.inclusions ? ` — inclut : ${p.inclusions}` : ""}`)
+    .join("\n");
+
+  const parsed = await appelerClaudeJSON({
+    system: PROPOSITION_OFFRE_SYSTEM_PROMPT,
+    userContent: `Notes de Découverte prises pendant l'appel :\n${decouverte}\n\nCatalogue de prestations actives (choisir UNIQUEMENT parmi celles-ci) :\n${cataloguetexte || "(aucune)"}\n\nSchéma JSON attendu :\n${PROPOSITION_OFFRE_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
+    maxTokens: 800,
+  });
+
+  return parsePropositionOffre(parsed);
+}

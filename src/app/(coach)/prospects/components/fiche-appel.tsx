@@ -6,8 +6,10 @@ import Link from "next/link";
 import {
   suggererResumeAppelAction,
   enregistrerAppelProspectAction,
+  genererPropositionOffreAction,
   type ResumeAppelState,
   type ActionState,
+  type PropositionOffreState,
 } from "../actions";
 import { SCRIPT_APPEL } from "@/lib/script-vente";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,33 @@ function chargerBrouillon(): Brouillon | null {
 
 const initialResumeState: ResumeAppelState = {};
 const initialSaveState: ActionState = {};
+const initialPropositionState: PropositionOffreState = {};
+
+// Étapes "Reformulation" (si=2) et "Offre ciblée" (si=3) : cocher l'une de ces cases déclenche
+// une proposition IA (à partir des notes de Découverte + du catalogue réel), jamais auto-remplie
+// sans validation — le coach modifie ou valide avant d'enregistrer.
+const CLE_REFORMULATION = "2-0";
+const CLE_FORMULE = "3-0";
+const CLE_TARIF = "3-1";
+const CLES_PROPOSITION_IA = new Set([CLE_REFORMULATION, CLE_FORMULE, CLE_TARIF]);
+const SI_DECOUVERTE = 1;
+
+function assemblerDecouverte(responses: Record<string, string>): string {
+  const lignes: string[] = [];
+  SCRIPT_APPEL[SI_DECOUVERTE].lignes.forEach((ligne, li) => {
+    const val = responses[`${SI_DECOUVERTE}-${li}`];
+    if (val && val.trim()) lignes.push(`${ligne.prompt} : ${val.trim()}`);
+  });
+  return lignes.join("\n");
+}
+
+function suggestionPourCle(cle: string, proposition: PropositionOffreState["proposition"]): string {
+  if (!proposition) return "";
+  if (cle === CLE_REFORMULATION) return proposition.reformulation;
+  if (cle === CLE_FORMULE) return proposition.formulePresentee;
+  if (cle === CLE_TARIF) return proposition.tarifEtModalites;
+  return "";
+}
 
 const SOURCES_SUGGEREES = [
   "Site vitrine",
@@ -87,6 +116,11 @@ export function FicheAppel() {
 
   const [resumeState, resumeFormAction, resumePending] = useActionState(suggererResumeAppelAction, initialResumeState);
   const [saveState, saveFormAction, savePending] = useActionState(enregistrerAppelProspectAction, initialSaveState);
+  const [propositionState, propositionFormAction, propositionPending] = useActionState(genererPropositionOffreAction, initialPropositionState);
+
+  const [suggestionVisiblePour, setSuggestionVisiblePour] = useState<Record<string, boolean>>({});
+  const [suggestionIgnoreePour, setSuggestionIgnoreePour] = useState<Record<string, boolean>>({});
+  const propositionDemandee = useRef(false);
 
   const totalLignes = SCRIPT_APPEL.reduce((s, e) => s + e.lignes.length, 0);
   const doneLignes = Object.values(checked).filter(Boolean).length;
@@ -116,7 +150,35 @@ export function FicheAppel() {
   }
 
   function toggle(key: string) {
-    setChecked((c) => ({ ...c, [key]: !c[key] }));
+    const nowChecked = !checked[key];
+    setChecked((c) => ({ ...c, [key]: nowChecked }));
+    if (nowChecked && CLES_PROPOSITION_IA.has(key) && !responses[key] && !suggestionIgnoreePour[key]) {
+      setSuggestionVisiblePour((v) => ({ ...v, [key]: true }));
+      demanderPropositionOffre();
+    }
+  }
+
+  function demanderPropositionOffre() {
+    if (propositionDemandee.current) return;
+    const decouverte = assemblerDecouverte(responses);
+    if (!decouverte.trim()) return;
+    propositionDemandee.current = true;
+    const fd = new FormData();
+    fd.set("decouverte", decouverte);
+    propositionFormAction(fd);
+  }
+
+  function utiliserSuggestion(key: string) {
+    const texte = suggestionPourCle(key, propositionState.proposition);
+    if (!texte) return;
+    setResponses((r) => ({ ...r, [key]: texte }));
+    setSuggestionVisiblePour((v) => ({ ...v, [key]: false }));
+    setSuggestionIgnoreePour((v) => ({ ...v, [key]: true }));
+  }
+
+  function ignorerSuggestion(key: string) {
+    setSuggestionVisiblePour((v) => ({ ...v, [key]: false }));
+    setSuggestionIgnoreePour((v) => ({ ...v, [key]: true }));
   }
 
   function handleResumer() {
@@ -250,6 +312,8 @@ export function FicheAppel() {
                   </span>
                   {etape.lignes.map((ligne, li) => {
                     const key = `${si}-${li}`;
+                    const montrerSuggestion = CLES_PROPOSITION_IA.has(key) && suggestionVisiblePour[key] && !suggestionIgnoreePour[key];
+                    const texteSuggestion = suggestionPourCle(key, propositionState.proposition);
                     return (
                       <div key={key} className="flex flex-col gap-1">
                         <span className="text-[11px] text-muted">{ligne.prompt}</span>
@@ -259,6 +323,44 @@ export function FicheAppel() {
                           onChange={(e) => setResponses((r) => ({ ...r, [key]: e.target.value }))}
                           className="h-8 rounded-[var(--radius-sm)] border border-border bg-surface px-2 text-sm"
                         />
+                        {montrerSuggestion && (
+                          <div className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-primary bg-primary-soft/40 px-3 py-2">
+                            <div className="flex items-center gap-1.5">
+                              <Sparkles className="h-3 w-3 text-primary" />
+                              <span className="text-[11px] font-bold uppercase tracking-wide text-primary">Proposition IA</span>
+                            </div>
+                            {propositionPending ? (
+                              <p className="text-xs text-muted">Génération en cours…</p>
+                            ) : propositionState.error ? (
+                              <p className="text-xs text-danger">{propositionState.error}</p>
+                            ) : texteSuggestion ? (
+                              <>
+                                <p className="text-xs leading-snug text-foreground">{texteSuggestion}</p>
+                                {(key === CLE_FORMULE || key === CLE_TARIF) && (
+                                  <span className="text-[11px] italic text-muted">Prestation et tarif pris dans ton catalogue réel — jamais inventés.</span>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => utiliserSuggestion(key)}
+                                    className="h-6 rounded-[var(--radius-sm)] bg-primary px-2.5 text-[11px] font-semibold text-primary-foreground"
+                                  >
+                                    Utiliser cette proposition
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => ignorerSuggestion(key)}
+                                    className="h-6 rounded-[var(--radius-sm)] border border-border px-2.5 text-[11px] font-semibold text-muted"
+                                  >
+                                    Ignorer
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-xs text-muted">Rien à proposer pour l&rsquo;instant — remplis d&rsquo;abord quelques réponses en Découverte.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { nextNumDossier } from "../patients/actions";
 import { nextNumero } from "../administratif/actions";
-import { genererResumeAppel, assistantIADisponible, type ResumeAppel } from "@/lib/ai";
+import { genererResumeAppel, genererPropositionOffre, assistantIADisponible, type ResumeAppel, type PropositionOffre } from "@/lib/ai";
 
 export interface ActionState {
   error?: string;
@@ -59,6 +59,33 @@ export async function suggererResumeAppelAction(_prev: ResumeAppelState, formDat
     const prestationsActives = await prisma.prestation.findMany({ where: { actif: true }, select: { nom: true } });
     const resume = await genererResumeAppel({ notes, prestationsActives: prestationsActives.map((p) => p.nom) });
     return { resume };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
+}
+
+export interface PropositionOffreState {
+  error?: string;
+  proposition?: PropositionOffre;
+}
+
+export async function genererPropositionOffreAction(_prev: PropositionOffreState, formData: FormData): Promise<PropositionOffreState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+  const decouverte = str(formData, "decouverte");
+  if (!decouverte) return { error: "Remplis au moins une réponse de Découverte avant de demander une proposition." };
+
+  try {
+    const prestationsActives = await prisma.prestation.findMany({
+      where: { actif: true },
+      select: { nom: true, type: true, tarif: true, unite: true, inclusions: true },
+    });
+    if (prestationsActives.length === 0) {
+      return { error: "Aucune prestation active dans ton catalogue — crée au moins une prestation avant de demander une proposition." };
+    }
+    const proposition = await genererPropositionOffre({ decouverte, prestationsActives });
+    return { proposition };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
   }
