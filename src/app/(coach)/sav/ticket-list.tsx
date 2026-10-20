@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import {
   updateTicketStatut,
+  deleteTicket,
   genererReponseSAVAction,
   envoyerReponseSAVAction,
   type GenererReponseState,
@@ -13,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime, formatDateHeureParis } from "@/lib/utils";
-import { Sparkles, CheckCircle2 } from "lucide-react";
+import { Sparkles, CheckCircle2, Trash2 } from "lucide-react";
 
 const initGenState: GenererReponseState = {};
 const initSendState: EnvoyerReponseState = {};
@@ -102,6 +103,15 @@ function TicketCard({ ticket, iaDisponible }: { ticket: Ticket; iaDisponible: bo
                 <Button size="sm" variant="secondary" type="submit">Résolu</Button>
               </form>
             )}
+            <form action={deleteTicket.bind(null, ticket.id)}>
+              <button
+                type="submit"
+                aria-label="Supprimer ce ticket"
+                className="rounded-[var(--radius-sm)] p-1.5 text-muted hover:bg-surface-muted hover:text-danger"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </form>
           </div>
         </div>
 

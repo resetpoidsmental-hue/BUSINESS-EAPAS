@@ -41,6 +41,11 @@ export async function updateTicketStatut(ticketId: string, statut: string) {
   revalidatePath("/sav");
 }
 
+export async function deleteTicket(ticketId: string) {
+  await prisma.sAVTicket.delete({ where: { id: ticketId } });
+  revalidatePath("/sav");
+}
+
 export interface GenererReponseState {
   error?: string;
   reponse?: string;
