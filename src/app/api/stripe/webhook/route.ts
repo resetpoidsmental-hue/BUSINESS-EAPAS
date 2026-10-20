@@ -6,10 +6,13 @@ import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 import { nextNumero } from "@/lib/numerotation";
 
 export async function POST(req: NextRequest) {
+  console.log("[DEBUG webhook] requête reçue, headers:", JSON.stringify(Object.fromEntries(req.headers.entries())));
+
   const signature = req.headers.get("stripe-signature");
   if (!signature) return new NextResponse("Signature manquante", { status: 400 });
 
   const payload = await req.text();
+  console.log("[DEBUG webhook] payload length:", payload.length);
   let event: Stripe.Event;
   try {
     event = verifierSignatureWebhook(payload, signature);
