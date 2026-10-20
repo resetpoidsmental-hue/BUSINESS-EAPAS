@@ -16,11 +16,14 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
   try {
     event = verifierSignatureWebhook(payload, signature);
-  } catch {
+    console.log("[DEBUG webhook] signature OK, event.type =", event.type);
+  } catch (e) {
+    console.log("[DEBUG webhook] signature KO:", e instanceof Error ? e.message : e);
     return new NextResponse("Signature invalide", { status: 400 });
   }
 
   try {
+    console.log("[DEBUG webhook] avant branchement event.type");
     if (event.type === "checkout.session.completed") {
       await gererCheckoutComplete(event.data.object as Stripe.Checkout.Session);
     } else if (event.type === "payment_intent.succeeded") {
@@ -28,11 +31,13 @@ export async function POST(req: NextRequest) {
     } else if (event.type === "payment_intent.payment_failed") {
       await gererPaymentIntentFinal(event.data.object as Stripe.PaymentIntent, "Échec");
     }
+    console.log("[DEBUG webhook] après branchement, aucune erreur");
   } catch (e) {
-    console.error("Erreur webhook Stripe:", e);
+    console.error("[DEBUG webhook] Erreur webhook Stripe:", e);
     // On répond quand même 200 : Stripe retentera sinon indéfiniment un événement qu'on ne saura
     // jamais traiter (ex. abonnement déjà supprimé) — l'échec est visible dans les logs.
   }
+  console.log("[DEBUG webhook] fin de la fonction, retour 200");
 
   return NextResponse.json({ received: true });
 }
