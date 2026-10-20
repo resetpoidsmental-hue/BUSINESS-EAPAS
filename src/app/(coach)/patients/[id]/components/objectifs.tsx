@@ -210,6 +210,7 @@ function ObjectifCard({ patientId, objectif }: { patientId: string; objectif: Ob
 
               <form action={createFormAction} className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="seancesJson" value={JSON.stringify(rows)} />
+                <input type="hidden" name="objectifId" value={objectif.id} />
                 <Button type="submit" size="sm" disabled={createPending}>
                   {createPending ? "Création…" : `Créer ces ${rows.length} séance${rows.length > 1 ? "s" : ""}`}
                 </Button>

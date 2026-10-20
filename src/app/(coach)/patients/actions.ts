@@ -294,6 +294,13 @@ export async function creerSeancesPlanifieesAction(
   const seancesRaw = str(formData, "seancesJson");
   if (!seancesRaw) return { error: "Rien à créer." };
 
+  const objectifIdRaw = str(formData, "objectifId");
+  let objectifId: string | null = null;
+  if (objectifIdRaw) {
+    const objectif = await prisma.objectifSMART.findFirst({ where: { id: objectifIdRaw, patientId } });
+    if (objectif) objectifId = objectif.id;
+  }
+
   let items: unknown;
   try {
     items = JSON.parse(seancesRaw);
@@ -323,6 +330,7 @@ export async function creerSeancesPlanifieesAction(
   await prisma.seance.createMany({
     data: aCreer.map((s) => ({
       patientId,
+      objectifSMARTId: objectifId,
       date: s.date,
       type: s.type,
       format: "Individuel",

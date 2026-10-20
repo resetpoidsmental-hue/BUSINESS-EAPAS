@@ -132,6 +132,7 @@ model ObjectifSMART {
   dateCible     DateTime?
   atteint       Boolean   @default(false)
   createdAt     DateTime  @default(now())
+  seances       Seance[]
 }
 
 model IPAQEvaluation {
@@ -174,17 +175,19 @@ model BilanNutritionnel {
 }
 
 model Seance {
-  id                  String   @id @default(cuid())
+  id                  String         @id @default(cuid())
   patientId           String
-  patient             Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient             Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  objectifSMARTId     String?
+  objectifSMART       ObjectifSMART? @relation(fields: [objectifSMARTId], references: [id], onDelete: SetNull)
   date                DateTime
   type                String?
   format              String?
-  statut              String   @default("Planifiée")
+  statut              String         @default("Planifiée")
   contenu             String?
-  genereParIA         Boolean  @default(false)
+  genereParIA         Boolean        @default(false)
   materielNecessaire  String?
-  materielVu          Boolean  @default(false)
+  materielVu          Boolean        @default(false)
   borgRessenti        Int?
   notes               String?
 }

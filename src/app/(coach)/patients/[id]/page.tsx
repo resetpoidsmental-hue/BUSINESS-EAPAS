@@ -32,7 +32,10 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       objectifs: { orderBy: { createdAt: "desc" } },
       ipaqEvaluations: { orderBy: { date: "desc" } },
       bilansNutrition: { orderBy: { date: "desc" } },
-      seances: { orderBy: { date: "desc" } },
+      seances: {
+        orderBy: { date: "desc" },
+        include: { objectifSMART: { select: { id: true, texteSMART: true } } },
+      },
       journalEntrees: { orderBy: { date: "desc" }, take: 30 },
       modelesRation: { orderBy: { updatedAt: "desc" } },
       patientAccess: true,
