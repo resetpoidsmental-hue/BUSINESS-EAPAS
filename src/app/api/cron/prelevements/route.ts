@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { prelieverAbonnement, stripeDisponible } from "@/lib/stripe";
-import { nextNumero } from "@/app/(coach)/administratif/actions";
+import { nextNumero } from "@/lib/numerotation";
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 
 /**

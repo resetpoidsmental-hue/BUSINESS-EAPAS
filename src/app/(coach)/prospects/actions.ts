@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { nextNumDossier } from "../patients/actions";
-import { nextNumero } from "../administratif/actions";
+import { nextNumero } from "@/lib/numerotation";
 import { genererResumeAppel, genererPropositionOffre, assistantIADisponible, type ResumeAppel, type PropositionOffre } from "@/lib/ai";
 
 export interface ActionState {

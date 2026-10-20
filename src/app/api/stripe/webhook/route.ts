@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { verifierSignatureWebhook, recupererMoyenPaiement, recupererPaymentIntent, recupererSetupIntent } from "@/lib/stripe";
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
-import { nextNumero } from "@/app/(coach)/administratif/actions";
+import { nextNumero } from "@/lib/numerotation";
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
