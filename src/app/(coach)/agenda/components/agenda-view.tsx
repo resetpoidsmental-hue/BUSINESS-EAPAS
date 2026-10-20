@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { updateSeanceStatut } from "../../patients/actions";
+import { updateSeanceStatut, deleteSeance } from "../../patients/actions";
 import {
   reserverCreneauPatientAction,
   reserverCreneauProspectAction,
@@ -124,6 +124,15 @@ export function AgendaView({
     if (!selectedSeance) return;
     startTransition(async () => {
       await updateSeanceStatut(selectedSeance.id, selectedSeance.patientId, statut);
+      refermer();
+      router.refresh();
+    });
+  }
+
+  function supprimer() {
+    if (!selectedSeance) return;
+    startTransition(async () => {
+      await deleteSeance(selectedSeance.id, selectedSeance.patientId);
       refermer();
       router.refresh();
     });
@@ -334,6 +343,9 @@ export function AgendaView({
             </Button>
             <Button type="button" variant="outline" className="border-danger text-danger" onClick={() => marquer("Annulée")} disabled={pending}>
               Marquer annulée
+            </Button>
+            <Button type="button" variant="destructive" onClick={supprimer} disabled={pending}>
+              Supprimer
             </Button>
             <Button type="button" onClick={() => marquer("Faite")} disabled={pending}>
               Marquer faite

@@ -466,6 +466,13 @@ export async function addSeance(patientId: string, _prev: ActionState, formData:
 export async function updateSeanceStatut(seanceId: string, patientId: string, statut: string) {
   await prisma.seance.update({ where: { id: seanceId }, data: { statut } });
   revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/agenda");
+}
+
+export async function deleteSeance(seanceId: string, patientId: string) {
+  await prisma.seance.delete({ where: { id: seanceId } });
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/agenda");
 }
 
 export async function generatePatientAccess(patientId: string) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addSeance, updateSeanceStatut, type ActionState } from "../../actions";
+import { addSeance, updateSeanceStatut, deleteSeance, type ActionState } from "../../actions";
 import { genererFicheSeanceAction, validerFicheSeanceAction, type GenererState, type ValiderState } from "../../../assistant/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { FicheSeanceCard } from "@/components/fiche-seance-card";
 import { parseFicheSeance, ficheSeanceToText, type FicheSeance } from "@/lib/fiche-seance";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, Sparkles, Target } from "lucide-react";
+import { CalendarDays, Sparkles, Target, Trash2 } from "lucide-react";
 
 const initialState: ActionState = {};
 const initGenState: GenererState = {};
@@ -126,6 +126,15 @@ function SeanceCard({ patientId, seance }: { patientId: string; seance: SeanceIt
                   </Button>
                 </form>
               ))}
+              <form action={deleteSeance.bind(null, seance.id, patientId)}>
+                <button
+                  type="submit"
+                  aria-label="Supprimer cette séance"
+                  className="rounded-[var(--radius-sm)] p-1.5 text-muted hover:bg-surface-muted hover:text-danger"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </form>
             </div>
           </div>
         </div>
