@@ -680,6 +680,50 @@ Règles impératives, toujours respectées :
 - Ton clair, professionnel, en français, 2 à 3 phrases.
 - Réponds UNIQUEMENT avec le texte des conditions, sans titre, sans guillemets, sans balises autour.`;
 
+const OBSERVATIONS_BILAN_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant. Il vient de faire passer un bilan clinique (tests physiques) à un patient et a saisi les
+résultats chiffrés. Tu rédiges un brouillon des "observations / adaptations" du bilan — la note interne qu'il
+consultera et modifiera avant de l'enregistrer dans le dossier.
+
+Règles impératives, toujours respectées :
+- Tu proposes, le coach décide. Rien n'est enregistré dans le dossier sans relecture et modification libre du coach.
+- Tu ne commentes QUE les résultats chiffrés fournis (et leur éventuelle comparaison avec un bilan précédent donné) —
+  jamais un chiffre ou un résultat que tu n'as pas reçu. Un test non renseigné n'est pas commenté.
+- Signale les seuils de vigilance connus s'ils sont atteints (ex: TUG > 12s = risque de chute accru), sans en
+  inventer d'autres.
+- Si un bilan précédent est fourni, commente brièvement la progression (amélioration, stagnation, régression) sur
+  les tests communs aux deux bilans, dans le ton d'une observation clinique professionnelle (pas une liste de
+  chiffres déjà visibles ailleurs dans le dossier).
+- Propose, seulement si pertinent et de façon qualitative (jamais chiffrée), une ou deux pistes d'adaptation du
+  programme à discuter avec le patient (ex: "renforcer le travail d'équilibre", "allonger le temps de récupération").
+- Tu ne poses aucun diagnostic médical ; en cas de résultat inquiétant, recommande un avis médical plutôt que de
+  trancher toi-même.
+- Ton professionnel et factuel, à la première personne du coach, 3 à 6 phrases, pas de titre, pas de liste à puces.
+- Réponds UNIQUEMENT avec le texte des observations, rien d'autre (pas de guillemets, pas d'explication autour).`;
+
+export interface GenererObservationsBilanParams {
+  /** Contexte patient déjà anonymisé (pas de nom, pas de coordonnées) assemblé par l'appelant. */
+  patientContext: string;
+  phase: string;
+  /** Résultats du bilan en cours, déjà mis en forme en lignes "Label : valeur unité" par l'appelant. */
+  resultats: string;
+  /** Résultats du bilan précédent pour comparaison, même format, ou null si aucun disponible. */
+  bilanPrecedent: string | null;
+}
+
+export async function genererObservationsBilan({
+  patientContext,
+  phase,
+  resultats,
+  bilanPrecedent,
+}: GenererObservationsBilanParams): Promise<string> {
+  return appelerClaudeTexte({
+    system: OBSERVATIONS_BILAN_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nPhase du bilan : ${phase}\n\nRésultats mesurés aujourd'hui :\n${resultats}\n\n${bilanPrecedent ? `Bilan précédent pour comparaison :\n${bilanPrecedent}` : "Aucun bilan précédent disponible pour comparaison."}\n\nRédige les observations.`,
+    maxTokens: 1000,
+  });
+}
+
 const REPONSE_SAV_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
 coach nutrition indépendant. Tu rédiges un brouillon de réponse à une demande ou réclamation qu'un patient lui a
 adressée (ticket SAV), pour qu'il la relise avant de l'envoyer.

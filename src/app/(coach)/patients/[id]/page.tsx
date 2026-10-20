@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { assistantIADisponible } from "@/lib/ai";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDate, ageFromDate, initials } from "@/lib/utils";
 import { EntretienForm } from "./components/entretien-form";
 import { BilanForm } from "./components/bilan-form";
 import { BilansComparison } from "./components/bilans-comparison";
+import { BilansCharts } from "./components/bilans-charts";
 import { ObjectifsSection } from "./components/objectifs";
 import { IPAQSection } from "./components/ipaq";
 import { NutritionPatientSection } from "./components/nutrition-patient";
@@ -137,7 +139,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="bilans">
           <div className="flex flex-col gap-8">
             <BilansComparison bilans={patient.bilans} />
-            <BilanForm patientId={patient.id} />
+            <BilansCharts bilans={patient.bilans} objectifs={patient.objectifs} />
+            <BilanForm patientId={patient.id} iaDisponible={assistantIADisponible()} />
           </div>
         </TabsContent>
 

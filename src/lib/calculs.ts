@@ -161,3 +161,11 @@ export function progressionTest(key: TestPassKey, t0: number | null | undefined,
   const ameliore = testBaisseEstAmelioration(key) ? delta < 0 : delta > 0;
   return { delta, ameliore };
 }
+
+/** Regroupement des tests du bilan par catégorie, pour l'affichage en petits graphiques groupés. */
+export const CATEGORIES_BILAN: { label: string; keys: TestPassKey[] }[] = [
+  { label: "Mobilité & Équilibre", keys: ["tugTemps", "equilibreYO", "equilibreYF"] },
+  { label: "Force", keys: ["leversChaise", "handgrip", "pompesMur"] },
+  { label: "Endurance", keys: ["tm6Distance", "tm6Borg", "tm6FCMax", "tm6SpO2"] },
+  { label: "Souplesse", keys: ["flexionTronc"] },
+];

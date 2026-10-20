@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { generateAccessCode, hashAccessCode } from "@/lib/auth";
-import { calculerScoreIPAQ, calculerBilanNutritionnel, type Sexe } from "@/lib/calculs";
+import { calculerScoreIPAQ, calculerBilanNutritionnel, TESTS_PASS, type Sexe, type TestPassKey } from "@/lib/calculs";
 import {
   genererObjectifSMART,
   genererPlanningSeances,
   genererMessageAttention,
   genererMessageRelanceJournal,
+  genererObservationsBilan,
   analyserSuivi,
   assistantIADisponible,
 } from "@/lib/ai";
@@ -197,6 +198,59 @@ export async function addBilan(patientId: string, _prev: ActionState, formData: 
 
   revalidatePath(`/patients/${patientId}`);
   return { success: `Bilan ${phase} enregistré.` };
+}
+
+function formaterResultatsBilan(formData: FormData): string {
+  const lignes: string[] = [];
+  for (const t of TESTS_PASS) {
+    const v = num(formData, t.key);
+    if (v !== null && !Number.isNaN(v)) lignes.push(`${t.label} : ${v} ${t.unite}`);
+  }
+  return lignes.join("\n");
+}
+
+function formaterBilanExistant(bilan: Record<string, unknown>): string {
+  const lignes: string[] = [];
+  for (const t of TESTS_PASS) {
+    const v = bilan[t.key as TestPassKey] as number | null;
+    if (v !== null && v !== undefined) lignes.push(`${t.label} : ${v} ${t.unite}`);
+  }
+  return lignes.join("\n");
+}
+
+export interface GenererObservationsState {
+  error?: string;
+  observations?: string;
+}
+
+export async function genererObservationsBilanAction(_prev: GenererObservationsState, formData: FormData): Promise<GenererObservationsState> {
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  const patientId = str(formData, "patientId");
+  if (!patientId) return { error: "Patient manquant." };
+  const phase = str(formData, "phase") ?? "T0";
+
+  const resultats = formaterResultatsBilan(formData);
+  if (!resultats) return { error: "Renseigne au moins un résultat de test avant de générer une proposition." };
+
+  try {
+    let bilanPrecedent: string | null = null;
+    if (phase !== "T0") {
+      const t0 = await prisma.bilanClinique.findFirst({ where: { patientId, phase: "T0" }, orderBy: { date: "desc" } });
+      if (t0) {
+        const texte = formaterBilanExistant(t0 as unknown as Record<string, unknown>);
+        bilanPrecedent = texte ? `Bilan T0 :\n${texte}` : null;
+      }
+    }
+
+    const patientContext = await buildPatientContext(patientId);
+    const observations = await genererObservationsBilan({ patientContext, phase, resultats, bilanPrecedent });
+    return { observations };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
 }
 
 export async function addObjectif(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {

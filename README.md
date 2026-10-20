@@ -11,8 +11,10 @@ service tiers. Coût d'hébergement : 0 € de plus que ton VPS actuel.
 
 - **Patients & clients** : dossier complet, entretien initial guidé, bilans
   cliniques (les 7 tests PASS : TM6, TUG, équilibre, force, souplesse) avec
-  comparaison T0/T1/T2, objectifs SMART, calculateur IPAQ, calculateur
-  nutritionnel (Mifflin-St Jeor), planning des séances.
+  comparaison T0/T1/T2 (tableau + graphiques d'évolution par test, groupés
+  par catégorie) et un indicateur circulaire sur l'objectif principal,
+  objectifs SMART, calculateur IPAQ, calculateur nutritionnel
+  (Mifflin-St Jeor), planning des séances.
 - **Tableau de bord** : vue d'ensemble, alertes (risque de chute TUG > 12s,
   bilans en retard, objectifs dépassés).
 - **Nutrition** : calculateur rapide autonome + suivi des clients nutrition.
@@ -28,10 +30,12 @@ service tiers. Coût d'hébergement : 0 € de plus que ton VPS actuel.
   préparer une fiche de séance détaillée (objectifs, échauffement/corps de
   séance/retour au calme, exercices avec RPE, matériel, sécurité, variantes,
   respiration, points de vigilance) à partir du profil du patient et de ses
-  dernières séances, et à rédiger un brouillon de réponse à un ticket SAV
-  lié à un patient (à partir de son profil et du message du ticket). L'IA
-  propose toujours un brouillon modifiable ; rien n'est écrit dans le
-  dossier patient ni envoyé au patient sans validation explicite du coach.
+  dernières séances, à rédiger un brouillon de réponse à un ticket SAV
+  lié à un patient (à partir de son profil et du message du ticket), et à
+  proposer les observations d'un bilan clinique (à partir des résultats
+  saisis et, si disponible, du bilan T0 pour la comparaison). L'IA propose
+  toujours un brouillon modifiable ; rien n'est écrit dans le dossier
+  patient ni envoyé au patient sans validation explicite du coach.
 
 ## Stack technique
 
@@ -328,9 +332,9 @@ formules, articles, recettes) connecté à EAPAS Suite via n8n. Voir
 
 ## Pistes d'évolution non incluses dans cette v1
 
-- Assistant IA : génération de brouillons de bilan (T1/T2/final) — la
-  préparation de fiche de séance, la suggestion d'objectifs SMART et le
-  planning de séances associé, et la réponse aux tickets SAV sont déjà
-  implémentés (voir « Assistant IA » ci-dessus).
+- Toutes les pistes « Assistant IA » envisagées initialement sont désormais
+  implémentées (préparation de fiche de séance, suggestion d'objectifs SMART
+  et planning de séances associé, réponse aux tickets SAV, observations de
+  bilan — voir « Assistant IA » ci-dessus).
 - Questionnaire Ricci & Gagnon (mentionné dans certaines de tes ressources) en
   complément du calculateur IPAQ déjà implémenté.

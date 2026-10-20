@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, Salad, Target as TargetIcon, Landmark } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { DonutGauge } from "@/components/ui/donut-gauge";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { PERIODE_LABELS, type PeriodeKey, type AnalytiqueResultat, type AnalytiquePatientRow } from "@/lib/analytics";
 
@@ -141,12 +142,14 @@ export function AnalytiqueView({ resultats }: { resultats: Record<PeriodeKey, An
               <TargetIcon className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-semibold">Objectifs &amp; résultats cliniques</h2>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <Stat label="Objectifs atteints" value={`${cohortes.objectifs.atteints} / ${cohortes.objectifs.total}`} />
-              <Stat label="Taux d'atteinte" value={fmtPct(cohortes.objectifs.tauxPct)} />
-              <Stat label="Δ TUG moyen" value={fmtDelta(cohortes.objectifs.deltaTugMoyen, "s")} />
+            <div className="flex items-center gap-4">
+              {cohortes.objectifs.tauxPct !== null && <DonutGauge percent={cohortes.objectifs.tauxPct} size={72} strokeWidth={9} />}
+              <div className="grid flex-1 grid-cols-3 gap-3">
+                <Stat label="Objectifs atteints" value={`${cohortes.objectifs.atteints} / ${cohortes.objectifs.total}`} />
+                <Stat label="Taux d'atteinte" value={fmtPct(cohortes.objectifs.tauxPct)} />
+                <Stat label="Δ TUG moyen" value={fmtDelta(cohortes.objectifs.deltaTugMoyen, "s")} />
+              </div>
             </div>
-            <ProgressRow label="Taux d'atteinte des objectifs" pct={cohortes.objectifs.tauxPct} />
           </CardContent>
         </Card>
 
