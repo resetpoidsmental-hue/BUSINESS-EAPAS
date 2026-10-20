@@ -190,6 +190,7 @@ model Seance {
   materielVu          Boolean        @default(false)
   borgRessenti        Int?
   notes               String?
+  rappel2hEnvoye      Boolean        @default(false)
 }
 
 model Abonnement {

@@ -29,6 +29,18 @@ export function formatHeure(date: Date | string | null | undefined) {
   return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
+export function formatDateHeureParis(date: Date | string | null | undefined) {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Europe/Paris",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 /** Clé "AAAA-MM-JJ" d'une date dans le fuseau du coach (le serveur tourne en UTC). */
 export function dateKeyParis(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;

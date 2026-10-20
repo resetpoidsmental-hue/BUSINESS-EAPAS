@@ -243,6 +243,67 @@ Ajoute (prélève tous les jours à 8h) :
 0 8 * * * curl -s -X POST -H "x-cron-secret: <la même valeur que CRON_SECRET>" https://<APP_HOST>/api/cron/prelevements
 ```
 
+## Rappels Telegram (séances à venir)
+
+Optionnel — le reste de l'application fonctionne normalement sans. Une fois en
+place : tu reçois sur ton propre Telegram un rappel la veille au soir et le
+matin (liste des séances du jour), puis un rappel individuel 2h avant chaque
+séance avec des boutons pour l'**annuler** ou la **déplacer** (+1h, +2h,
+lendemain même heure) directement depuis Telegram — chaque horaire proposé
+est vérifié contre tes horaires de travail et tes séances déjà prises ; s'il
+ne convient pas, Telegram te propose de le confirmer comme créneau
+exceptionnel avant que quoi que ce soit ne bouge. Tu reçois aussi un message
+dès qu'une fiche de séance préparée par l'IA est enregistrée. Dans tous les
+cas où une séance est annulée ou déplacée depuis Telegram, le patient en est
+automatiquement informé dans son espace du Portail patient et par email (si
+son adresse est connue) — jamais l'IA qui décide de le contacter, toujours
+une conséquence directe de ton action.
+
+### 1. Créer le bot Telegram
+
+1. Ouvre une conversation avec [@BotFather](https://t.me/BotFather) sur
+   Telegram, envoie `/newbot` et suis les instructions (nom, puis identifiant
+   se terminant par `bot`).
+2. BotFather te donne un **token** (ex. `123456789:AAEhB...`) — mets-le dans
+   `TELEGRAM_BOT_TOKEN`.
+3. Envoie n'importe quel message à ton nouveau bot (ex. "bonjour") depuis ton
+   propre compte Telegram, pour qu'il connaisse ta conversation.
+4. Récupère ton identifiant de conversation (`chat_id`) :
+   ```bash
+   curl -s "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates"
+   ```
+   Cherche `"chat":{"id":...}` dans la réponse — ce nombre va dans
+   `TELEGRAM_CHAT_ID`.
+5. Génère un `TELEGRAM_WEBHOOK_SECRET` avec `openssl rand -hex 32`.
+
+### 2. Brancher le webhook (boutons Annuler/Déplacer)
+
+Une fois le `.env` rempli et l'app déployée, indique à Telegram où envoyer
+les taps sur les boutons :
+
+```bash
+curl -s -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://<APP_HOST>/api/telegram/webhook", "secret_token": "<TELEGRAM_WEBHOOK_SECRET>"}'
+```
+
+### 3. Déclencher les rappels
+
+Même principe que les prélèvements : 3 tâches cron appellent l'app à heures
+fixes (le `CRON_SECRET` existant protège aussi ces appels). Sur le VPS :
+
+```bash
+crontab -e
+```
+
+Ajoute :
+
+```
+45 20 * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=veille"
+45 7 * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=matin"
+*/15 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappel2h"
+```
+
 ## Sécurité & RGPD
 
 - Les mots de passe sont hachés (bcrypt), les sessions sont des cookies signés
@@ -265,8 +326,9 @@ formules, articles, recettes) connecté à EAPAS Suite via n8n. Voir
 
 ## Pistes d'évolution non incluses dans cette v1
 
-- Assistant IA : génération d'objectifs SMART, de brouillons de bilan
-  (T1/T2/final) et de réponses SAV — seule la préparation de fiche de séance
-  est implémentée pour l'instant (voir « Assistant IA » ci-dessus).
+- Assistant IA : génération de brouillons de bilan (T1/T2/final) et de
+  réponses SAV — la préparation de fiche de séance, la suggestion
+  d'objectifs SMART et le planning de séances associé sont déjà implémentés
+  (voir « Assistant IA » ci-dessus).
 - Questionnaire Ricci & Gagnon (mentionné dans certaines de tes ressources) en
   complément du calculateur IPAQ déjà implémenté.

@@ -47,3 +47,33 @@ export async function envoyerRecuFacture({
 
   if (error) throw new Error(`Échec de l'envoi de l'email : ${error.message}`);
 }
+
+/**
+ * Prévient un patient par email qu'une de ses séances a été annulée ou déplacée. N'est appelé
+ * qu'à la suite d'une action explicite du coach (bouton Telegram) — jamais automatiquement.
+ */
+export async function envoyerNotificationSeance({
+  destinataire,
+  nomPatient,
+  sujet,
+  texte,
+}: {
+  destinataire: string;
+  nomPatient: string;
+  sujet: string;
+  texte: string;
+}) {
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!from) throw new Error("RESEND_FROM_EMAIL manquant dans l'environnement.");
+
+  const resend = getResendClient();
+
+  const { error } = await resend.emails.send({
+    from: `Santé & Co <${from}>`,
+    to: destinataire,
+    subject: sujet,
+    text: `Bonjour ${nomPatient},\n\n${texte}\n\nÀ bientôt,\nSanté & Co`,
+  });
+
+  if (error) throw new Error(`Échec de l'envoi de l'email : ${error.message}`);
+}

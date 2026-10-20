@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { genererFicheSeance, assistantIADisponible } from "@/lib/ai";
 import { buildPatientContext } from "@/lib/patient-context";
 import { isFicheSeance, type FicheSeance } from "@/lib/fiche-seance";
+import { telegramDisponible, envoyerMessageTelegram } from "@/lib/telegram";
+import { formatDateHeureParis } from "@/lib/utils";
 
 export interface GenererState {
   error?: string;
@@ -71,7 +73,7 @@ export async function validerFicheSeanceAction(_prev: ValiderState, formData: Fo
 
   const materielNecessaire = typeof materielRaw === "string" && materielRaw.trim() ? materielRaw.trim() : null;
 
-  await prisma.seance.update({
+  const seance = await prisma.seance.update({
     where: { id: seanceId },
     data: {
       contenu,
@@ -79,11 +81,22 @@ export async function validerFicheSeanceAction(_prev: ValiderState, formData: Fo
       materielNecessaire,
       materielVu: false,
     },
+    include: { patient: { select: { prenom: true, nom: true } } },
   });
 
   revalidatePath(`/patients/${patientId}`);
   revalidatePath("/assistant");
   revalidatePath("/portail");
+
+  if (telegramDisponible()) {
+    try {
+      await envoyerMessageTelegram(
+        `✅ Fiche prête — ${seance.patient.prenom} ${seance.patient.nom}\nSéance du ${formatDateHeureParis(seance.date)}, préparée par l'IA.\nÀ relire et ajuster si besoin dans sa fiche patient.`
+      );
+    } catch (e) {
+      console.error("Échec de la notification Telegram (fiche prête):", e);
+    }
+  }
 
   return { success: "Fiche enregistrée dans le dossier du patient." };
 }
