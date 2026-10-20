@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { assistantIADisponible } from "@/lib/ai";
 import { PageHeader } from "@/components/layout/page-header";
 import { TicketForm } from "./ticket-form";
 import { TicketList } from "./ticket-list";
@@ -17,7 +18,7 @@ export default async function SAVPage() {
       <PageHeader title="SAV" description="Suivi des demandes, réclamations et incidents." />
       <div className="flex flex-col gap-6">
         <TicketForm patients={patients} />
-        <TicketList tickets={tickets} />
+        <TicketList tickets={tickets} iaDisponible={assistantIADisponible()} />
       </div>
     </div>
   );

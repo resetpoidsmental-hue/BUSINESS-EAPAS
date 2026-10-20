@@ -49,10 +49,10 @@ export async function envoyerRecuFacture({
 }
 
 /**
- * Prévient un patient par email qu'une de ses séances a été annulée ou déplacée. N'est appelé
- * qu'à la suite d'une action explicite du coach (bouton Telegram) — jamais automatiquement.
+ * Prévient un patient par email (changement de séance, réponse à un ticket SAV…). N'est appelé
+ * qu'à la suite d'une action explicite du coach — jamais automatiquement.
  */
-export async function envoyerNotificationSeance({
+export async function envoyerNotificationPatient({
   destinataire,
   nomPatient,
   sujet,

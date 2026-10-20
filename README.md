@@ -28,8 +28,10 @@ service tiers. Coût d'hébergement : 0 € de plus que ton VPS actuel.
   préparer une fiche de séance détaillée (objectifs, échauffement/corps de
   séance/retour au calme, exercices avec RPE, matériel, sécurité, variantes,
   respiration, points de vigilance) à partir du profil du patient et de ses
-  dernières séances. L'IA propose un brouillon modifiable ; rien n'est écrit
-  dans le dossier patient sans validation explicite du coach.
+  dernières séances, et à rédiger un brouillon de réponse à un ticket SAV
+  lié à un patient (à partir de son profil et du message du ticket). L'IA
+  propose toujours un brouillon modifiable ; rien n'est écrit dans le
+  dossier patient ni envoyé au patient sans validation explicite du coach.
 
 ## Stack technique
 
@@ -326,9 +328,9 @@ formules, articles, recettes) connecté à EAPAS Suite via n8n. Voir
 
 ## Pistes d'évolution non incluses dans cette v1
 
-- Assistant IA : génération de brouillons de bilan (T1/T2/final) et de
-  réponses SAV — la préparation de fiche de séance, la suggestion
-  d'objectifs SMART et le planning de séances associé sont déjà implémentés
-  (voir « Assistant IA » ci-dessus).
+- Assistant IA : génération de brouillons de bilan (T1/T2/final) — la
+  préparation de fiche de séance, la suggestion d'objectifs SMART et le
+  planning de séances associé, et la réponse aux tickets SAV sont déjà
+  implémentés (voir « Assistant IA » ci-dessus).
 - Questionnaire Ricci & Gagnon (mentionné dans certaines de tes ressources) en
   complément du calculateur IPAQ déjà implémenté.

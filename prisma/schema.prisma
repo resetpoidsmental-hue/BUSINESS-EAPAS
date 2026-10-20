@@ -286,6 +286,8 @@ model SAVTicket {
   description String?
   statut      String    @default("Ouvert")
   priorite    String    @default("Normale")
+  reponse          String?
+  reponseEnvoyeeAt DateTime?
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
 }

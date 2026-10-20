@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import type { Patient } from "@prisma/client";
 import { envoyerMessageTelegram, repondreCallbackTelegram } from "@/lib/telegram";
 import { verifierDisponibilite, declarerCreneauExceptionnel } from "@/lib/disponibilite";
-import { envoyerNotificationSeance, emailDisponible } from "@/lib/email";
+import { envoyerNotificationPatient, emailDisponible } from "@/lib/email";
 import { formatHeure, formatDateHeureParis } from "@/lib/utils";
 
 const DELTAS_MS: Record<string, number> = { h1: 60 * 60 * 1000, h2: 2 * 60 * 60 * 1000, j1: 24 * 60 * 60 * 1000 };
@@ -144,7 +144,7 @@ async function avertirPatient(seance: SeanceAvecPatient, sujet: string, texte: s
 
   if (seance.patient.email && emailDisponible()) {
     try {
-      await envoyerNotificationSeance({
+      await envoyerNotificationPatient({
         destinataire: seance.patient.email,
         nomPatient: `${seance.patient.prenom} ${seance.patient.nom}`,
         sujet,

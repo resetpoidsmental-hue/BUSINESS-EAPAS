@@ -680,6 +680,38 @@ Règles impératives, toujours respectées :
 - Ton clair, professionnel, en français, 2 à 3 phrases.
 - Réponds UNIQUEMENT avec le texte des conditions, sans titre, sans guillemets, sans balises autour.`;
 
+const REPONSE_SAV_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant. Tu rédiges un brouillon de réponse à une demande ou réclamation qu'un patient lui a
+adressée (ticket SAV), pour qu'il la relise avant de l'envoyer.
+
+Règles impératives, toujours respectées :
+- Le message est un BROUILLON : le coach le relira, pourra le modifier, et décide seul de l'envoyer ou non.
+- Réponds précisément à la demande du patient, en t'appuyant uniquement sur son profil fourni et le contenu du
+  ticket — jamais une information ou un fait inventé.
+- Tu ne poses aucun diagnostic médical, ne donnes aucune consigne médicale précise ; en cas de doute (douleur,
+  blessure, symptôme), oriente avec prudence vers un avis médical plutôt que de trancher toi-même.
+- Tu n'inventes aucun chiffre (tarif, date, quantité) : si le ticket évoque un montant ou une date précise que tu
+  ne connais pas avec certitude, invite le patient à préciser ou indique que le coach va vérifier, sans avancer de
+  valeur.
+- Ton chaleureux et professionnel, concis (3 à 6 phrases), jamais culpabilisant.
+- Signe simplement ("Martial"), sans emoji, sans formule de politesse exagérée.
+- Réponds UNIQUEMENT avec le texte du message, rien d'autre (pas de guillemets, pas d'explication autour).`;
+
+export interface GenererReponseSAVParams {
+  /** Contexte patient déjà anonymisé (pas de nom, pas de coordonnées) assemblé par l'appelant. */
+  patientContext: string;
+  sujet: string;
+  message: string | null;
+}
+
+export async function genererReponseSAV({ patientContext, sujet, message }: GenererReponseSAVParams): Promise<string> {
+  return appelerClaudeTexte({
+    system: REPONSE_SAV_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nSujet du ticket : ${sujet}\n\nMessage du patient : ${message ?? "(aucun détail donné, uniquement le sujet ci-dessus)"}\n\nRédige la réponse.`,
+    maxTokens: 1000,
+  });
+}
+
 export async function genererConditionsAnnulation({
   formule,
   dureeMois,
