@@ -162,10 +162,13 @@ export function progressionTest(key: TestPassKey, t0: number | null | undefined,
   return { delta, ameliore };
 }
 
-/** Regroupement des tests du bilan par catégorie, pour l'affichage en petits graphiques groupés. */
-export const CATEGORIES_BILAN: { label: string; keys: TestPassKey[] }[] = [
-  { label: "Mobilité & Équilibre", keys: ["tugTemps", "equilibreYO", "equilibreYF"] },
-  { label: "Force", keys: ["leversChaise", "handgrip", "pompesMur"] },
-  { label: "Endurance", keys: ["tm6Distance", "tm6Borg", "tm6FCMax", "tm6SpO2"] },
-  { label: "Souplesse", keys: ["flexionTronc"] },
+/** Regroupement des tests du bilan par catégorie, pour l'affichage en petits graphiques groupés.
+ * `colorVar` : une couleur par catégorie (jamais par test individuel — avec autant de petits
+ * graphiques à l'écran en même temps, une teinte par test ne resterait pas distinguable de façon
+ * fiable ; voir globals.css pour les valeurs). */
+export const CATEGORIES_BILAN: { label: string; keys: TestPassKey[]; colorVar: string }[] = [
+  { label: "Mobilité & Équilibre", keys: ["tugTemps", "equilibreYO", "equilibreYF"], colorVar: "var(--color-chart-mobilite)" },
+  { label: "Force", keys: ["leversChaise", "handgrip", "pompesMur"], colorVar: "var(--color-chart-force)" },
+  { label: "Endurance", keys: ["tm6Distance", "tm6Borg", "tm6FCMax", "tm6SpO2"], colorVar: "var(--color-chart-endurance)" },
+  { label: "Souplesse", keys: ["flexionTronc"], colorVar: "var(--color-chart-souplesse)" },
 ];

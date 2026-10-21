@@ -25,6 +25,13 @@
 
   --ring: #0f7a5f;
   --radius: 0.9rem;
+
+  /* Graphiques des bilans : une couleur par catégorie de test (palette catégorielle
+     accessible — distincte des couleurs sémantiques primary/success/warning/danger). */
+  --chart-mobilite: #2a78d6;
+  --chart-force: #eb6834;
+  --chart-endurance: #6250d6;
+  --chart-souplesse: #e87ba4;
 }
 
 :root[data-theme="dark"] {
@@ -51,6 +58,11 @@
   --danger-soft: #341717;
 
   --ring: #34c99b;
+
+  --chart-mobilite: #3987e5;
+  --chart-force: #d95926;
+  --chart-endurance: #9085e9;
+  --chart-souplesse: #d55181;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -78,6 +90,11 @@
     --danger-soft: #341717;
 
     --ring: #34c99b;
+
+    --chart-mobilite: #3987e5;
+    --chart-force: #d95926;
+    --chart-endurance: #9085e9;
+    --chart-souplesse: #d55181;
   }
 }
 
@@ -101,6 +118,10 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-ring: var(--ring);
+  --color-chart-mobilite: var(--chart-mobilite);
+  --color-chart-force: var(--chart-force);
+  --color-chart-endurance: var(--chart-endurance);
+  --color-chart-souplesse: var(--chart-souplesse);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 0.25rem);
   --radius-sm: calc(var(--radius) - 0.35rem);

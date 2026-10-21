@@ -36,7 +36,7 @@ function valeurTest(bilans: BilanRow[], phase: string, key: TestPassKey): number
   return typeof v === "number" ? v : null;
 }
 
-function TestChart({ testKey, bilans }: { testKey: TestPassKey; bilans: BilanRow[] }) {
+function TestChart({ testKey, bilans, color }: { testKey: TestPassKey; bilans: BilanRow[]; color: string }) {
   const test = TESTS_PASS.find((t) => t.key === testKey)!;
   const points = PHASE_ORDER.map((phase) => ({ phase, value: valeurTest(bilans, phase, testKey) }))
     .filter((p) => p.value !== null)
@@ -70,7 +70,7 @@ function TestChart({ testKey, bilans }: { testKey: TestPassKey; bilans: BilanRow
             formatter={(value) => [`${value} ${test.unite}`, test.label]}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--color-border)" }}
           />
-          <Bar dataKey="value" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={36} label={{ position: "top", fontSize: 11, fill: "var(--color-foreground)", fontWeight: 600 }} />
+          <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={36} label={{ position: "top", fontSize: 11, fill: "var(--color-foreground)", fontWeight: 600 }} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -126,11 +126,14 @@ export function BilansCharts({ bilans, objectifs }: { bilans: BilanRow[]; object
         return (
           <Card key={cat.label}>
             <CardContent className="flex flex-col gap-3 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{cat.label}</p>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.colorVar }} aria-hidden="true" />
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{cat.label}</p>
+              </div>
               {aDesDonnees ? (
                 <div className="flex flex-wrap gap-6">
                   {cat.keys.map((k) => (
-                    <TestChart key={k} testKey={k} bilans={bilans} />
+                    <TestChart key={k} testKey={k} bilans={bilans} color={cat.colorVar} />
                   ))}
                 </div>
               ) : (

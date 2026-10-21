@@ -58,6 +58,7 @@ export function BilanForm({ patientId, iaDisponible, bilans }: { patientId: stri
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
+      <input type="hidden" name="patientId" value={patientId} />
       <input type="hidden" name="bilanId" value={editingId ?? ""} />
 
       <div className="flex flex-col gap-1.5">
