@@ -161,27 +161,38 @@ export async function addEntretien(patientId: string, _prev: ActionState, formDa
   return { success: "Entretien initial enregistré." };
 }
 
-export async function addBilan(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+/**
+ * Enregistre un bilan : met à jour le bilan existant de cette phase si un `bilanId` est fourni
+ * (le formulaire se synchronise automatiquement sur un bilan déjà enregistré quand on sélectionne
+ * sa phase), sinon en crée un nouveau. Jamais de doublon silencieux pour une même phase.
+ */
+export async function saveBilan(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const phase = str(formData, "phase") ?? "T0";
+  const bilanId = str(formData, "bilanId");
 
-  await prisma.bilanClinique.create({
-    data: {
-      patientId,
-      phase,
-      tm6Distance: num(formData, "tm6Distance"),
-      tm6Borg: num(formData, "tm6Borg"),
-      tm6FCMax: num(formData, "tm6FCMax"),
-      tm6SpO2: num(formData, "tm6SpO2"),
-      tugTemps: num(formData, "tugTemps"),
-      equilibreYO: num(formData, "equilibreYO"),
-      equilibreYF: num(formData, "equilibreYF"),
-      leversChaise: num(formData, "leversChaise"),
-      handgrip: num(formData, "handgrip"),
-      pompesMur: num(formData, "pompesMur"),
-      flexionTronc: num(formData, "flexionTronc"),
-      observations: str(formData, "observations"),
-    },
-  });
+  const data = {
+    phase,
+    tm6Distance: num(formData, "tm6Distance"),
+    tm6Borg: num(formData, "tm6Borg"),
+    tm6FCMax: num(formData, "tm6FCMax"),
+    tm6SpO2: num(formData, "tm6SpO2"),
+    tugTemps: num(formData, "tugTemps"),
+    equilibreYO: num(formData, "equilibreYO"),
+    equilibreYF: num(formData, "equilibreYF"),
+    leversChaise: num(formData, "leversChaise"),
+    handgrip: num(formData, "handgrip"),
+    pompesMur: num(formData, "pompesMur"),
+    flexionTronc: num(formData, "flexionTronc"),
+    observations: str(formData, "observations"),
+  };
+
+  if (bilanId) {
+    const existant = await prisma.bilanClinique.findUnique({ where: { id: bilanId } });
+    if (!existant || existant.patientId !== patientId) return { error: "Bilan introuvable." };
+    await prisma.bilanClinique.update({ where: { id: bilanId }, data });
+  } else {
+    await prisma.bilanClinique.create({ data: { ...data, patientId } });
+  }
 
   if (phase === "T0") {
     await prisma.patient.update({
@@ -197,7 +208,7 @@ export async function addBilan(patientId: string, _prev: ActionState, formData: 
   }
 
   revalidatePath(`/patients/${patientId}`);
-  return { success: `Bilan ${phase} enregistré.` };
+  return { success: bilanId ? `Bilan ${phase} mis à jour.` : `Bilan ${phase} enregistré.` };
 }
 
 function formaterResultatsBilan(formData: FormData): string {

@@ -140,7 +140,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           <div className="flex flex-col gap-8">
             <BilansComparison bilans={patient.bilans} />
             <BilansCharts bilans={patient.bilans} objectifs={patient.objectifs} />
-            <BilanForm patientId={patient.id} iaDisponible={assistantIADisponible()} />
+            <BilanForm patientId={patient.id} iaDisponible={assistantIADisponible()} bilans={patient.bilans} />
           </div>
         </TabsContent>
 

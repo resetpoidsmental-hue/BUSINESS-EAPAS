@@ -1,25 +1,54 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { addBilan, genererObservationsBilanAction, type ActionState, type GenererObservationsState } from "../../actions";
+import { useActionState, useState, useEffect } from "react";
+import { saveBilan, genererObservationsBilanAction, type ActionState, type GenererObservationsState } from "../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { TESTS_PASS } from "@/lib/calculs";
+import { TESTS_PASS, type TestPassKey } from "@/lib/calculs";
 import { AlertTriangle, Sparkles } from "lucide-react";
 
 const initialState: ActionState = {};
 const initGenState: GenererObservationsState = {};
 
-export function BilanForm({ patientId, iaDisponible }: { patientId: string; iaDisponible: boolean }) {
-  const action = addBilan.bind(null, patientId);
+interface BilanExistant {
+  id: string;
+  phase: string;
+  observations: string | null;
+  [key: string]: unknown;
+}
+
+export function BilanForm({ patientId, iaDisponible, bilans }: { patientId: string; iaDisponible: boolean; bilans: BilanExistant[] }) {
+  const action = saveBilan.bind(null, patientId);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [genState, genFormAction, genPending] = useActionState(genererObservationsBilanAction, initGenState);
 
   const [phase, setPhase] = useState("T0");
   const [resultats, setResultats] = useState<Record<string, string>>({});
   const [observations, setObservations] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Le formulaire se synchronise sur le bilan déjà enregistré pour la phase choisie (ses valeurs
+  // exactes, modifiables), pour ne jamais faire ressaisir des résultats déjà connus ni créer un
+  // doublon silencieux. Phase sans bilan existant → formulaire vierge, mode création.
+  useEffect(() => {
+    const existant = bilans.find((b) => b.phase === phase);
+    if (existant) {
+      const r: Record<string, string> = {};
+      for (const t of TESTS_PASS) {
+        const v = existant[t.key as TestPassKey];
+        r[t.key] = typeof v === "number" ? String(v) : "";
+      }
+      setResultats(r);
+      setObservations(typeof existant.observations === "string" ? existant.observations : "");
+      setEditingId(existant.id);
+    } else {
+      setResultats({});
+      setObservations("");
+      setEditingId(null);
+    }
+  }, [phase, bilans]);
 
   const [lastObservations, setLastObservations] = useState(genState.observations);
   if (genState.observations !== lastObservations) {
@@ -29,7 +58,7 @@ export function BilanForm({ patientId, iaDisponible }: { patientId: string; iaDi
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <input type="hidden" name="patientId" value={patientId} />
+      <input type="hidden" name="bilanId" value={editingId ?? ""} />
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="phase">Phase du bilan</Label>
@@ -44,6 +73,11 @@ export function BilanForm({ patientId, iaDisponible }: { patientId: string; iaDi
           <option value="T1">T1 — Bilan intermédiaire</option>
           <option value="T2">T2 — Bilan final</option>
         </select>
+        {editingId && (
+          <p className="text-xs text-muted">
+            Un bilan {phase} est déjà enregistré — ses valeurs sont reprises ci-dessous, modifie-les si besoin.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -100,7 +134,7 @@ export function BilanForm({ patientId, iaDisponible }: { patientId: string; iaDi
 
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
-          {pending ? "Enregistrement…" : `Enregistrer le bilan ${phase}`}
+          {pending ? "Enregistrement…" : editingId ? `Mettre à jour le bilan ${phase}` : `Enregistrer le bilan ${phase}`}
         </Button>
       </div>
     </form>
