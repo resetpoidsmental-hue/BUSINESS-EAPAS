@@ -19,12 +19,23 @@ interface BilanExistant {
   [key: string]: unknown;
 }
 
-export function BilanForm({ patientId, iaDisponible, bilans }: { patientId: string; iaDisponible: boolean; bilans: BilanExistant[] }) {
+export function BilanForm({
+  patientId,
+  iaDisponible,
+  bilans,
+  phase,
+  onPhaseChange,
+}: {
+  patientId: string;
+  iaDisponible: boolean;
+  bilans: BilanExistant[];
+  phase: string;
+  onPhaseChange: (phase: string) => void;
+}) {
   const action = saveBilan.bind(null, patientId);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [genState, genFormAction, genPending] = useActionState(genererObservationsBilanAction, initGenState);
 
-  const [phase, setPhase] = useState("T0");
   const [resultats, setResultats] = useState<Record<string, string>>({});
   const [observations, setObservations] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,7 +78,7 @@ export function BilanForm({ patientId, iaDisponible, bilans }: { patientId: stri
           id="phase"
           name="phase"
           value={phase}
-          onChange={(e) => setPhase(e.target.value)}
+          onChange={(e) => onPhaseChange(e.target.value)}
           className="h-10 w-full max-w-xs rounded-[var(--radius-sm)] border border-border bg-surface px-3 text-sm sm:w-auto"
         >
           <option value="T0">T0 — Bilan initial</option>

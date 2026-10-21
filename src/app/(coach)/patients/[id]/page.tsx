@@ -7,9 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDate, ageFromDate, initials } from "@/lib/utils";
 import { EntretienForm } from "./components/entretien-form";
-import { BilanForm } from "./components/bilan-form";
-import { BilansComparison } from "./components/bilans-comparison";
-import { BilansCharts } from "./components/bilans-charts";
+import { BilansSection } from "./components/bilans-section";
 import { ObjectifsSection } from "./components/objectifs";
 import { IPAQSection } from "./components/ipaq";
 import { NutritionPatientSection } from "./components/nutrition-patient";
@@ -137,11 +135,12 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         </TabsContent>
 
         <TabsContent value="bilans">
-          <div className="flex flex-col gap-8">
-            <BilansComparison bilans={patient.bilans} />
-            <BilansCharts bilans={patient.bilans} objectifs={patient.objectifs} />
-            <BilanForm patientId={patient.id} iaDisponible={assistantIADisponible()} bilans={patient.bilans} />
-          </div>
+          <BilansSection
+            patientId={patient.id}
+            iaDisponible={assistantIADisponible()}
+            bilans={patient.bilans}
+            objectifs={patient.objectifs}
+          />
         </TabsContent>
 
         <TabsContent value="objectifs">

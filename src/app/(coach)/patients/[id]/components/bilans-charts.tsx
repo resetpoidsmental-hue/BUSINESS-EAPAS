@@ -42,10 +42,10 @@ function TestChart({ testKey, bilans, color }: { testKey: TestPassKey; bilans: B
     .filter((p) => p.value !== null)
     .map((p) => ({ phase: p.phase as string, value: p.value as number }));
 
-  if (points.length < 2) {
+  if (points.length === 0) {
     return (
       <div className="flex h-[150px] w-[220px] flex-col items-center justify-center rounded-[var(--radius-sm)] border border-dashed border-border p-4 text-center">
-        <p className="text-xs text-muted">{test.label} : pas encore assez de bilans (2 minimum).</p>
+        <p className="text-xs text-muted">{test.label} : pas encore de résultat renseigné.</p>
       </div>
     );
   }

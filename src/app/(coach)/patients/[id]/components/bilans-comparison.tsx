@@ -1,4 +1,6 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+"use client";
+
+import { TrendingUp, TrendingDown, Minus, Pencil } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { TESTS_PASS, progressionTest, type TestPassKey } from "@/lib/calculs";
 import { formatDate, formatNumber } from "@/lib/utils";
@@ -9,7 +11,7 @@ interface BilanRow {
   [key: string]: unknown;
 }
 
-export function BilansComparison({ bilans }: { bilans: BilanRow[] }) {
+export function BilansComparison({ bilans, onSelectPhase }: { bilans: BilanRow[]; onSelectPhase?: (phase: string) => void }) {
   const parPhase: Record<string, BilanRow | undefined> = {
     T0: bilans.find((b) => b.phase === "T0"),
     T1: bilans.find((b) => b.phase === "T1"),
@@ -31,9 +33,23 @@ export function BilansComparison({ bilans }: { bilans: BilanRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Test</TableHead>
-            <TableHead>T0</TableHead>
-            <TableHead>T1</TableHead>
-            <TableHead>T2</TableHead>
+            {(["T0", "T1", "T2"] as const).map((p) => (
+              <TableHead key={p}>
+                {onSelectPhase ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelectPhase(p)}
+                    className="inline-flex items-center gap-1 font-medium text-foreground hover:text-primary"
+                    title={`Saisir ou modifier le bilan ${p}`}
+                  >
+                    {p}
+                    <Pencil className="h-3 w-3 opacity-60" />
+                  </button>
+                ) : (
+                  p
+                )}
+              </TableHead>
+            ))}
             <TableHead>Évolution (T2 vs T0)</TableHead>
           </TableRow>
         </TableHeader>
