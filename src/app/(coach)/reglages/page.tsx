@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SettingsForm } from "./settings-form";
 import { PortalToggle } from "./portal-toggle";
 import { HorairesTravail } from "./components/horaires-travail";
+import { IntegrationsStatus } from "./components/integrations-status";
 
 export default async function ReglagesPage() {
   let settings = await prisma.settings.findUnique({ where: { id: 1 } });
@@ -20,6 +21,7 @@ export default async function ReglagesPage() {
     <div>
       <PageHeader title="Réglages" description="Informations professionnelles et paramètres de l'application." />
       <div className="flex flex-col gap-6">
+        <IntegrationsStatus />
         <PortalToggle initial={settings.portalEnabled} />
         <SettingsForm
           settings={{
