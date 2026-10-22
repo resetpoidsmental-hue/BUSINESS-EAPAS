@@ -142,7 +142,7 @@ export function AppShell({
           </button>
           <span className="text-sm font-semibold md:hidden">EAPAS Suite</span>
           <div className="flex-1" />
-          <NotificationBell alertes={alertes} />
+          <NotificationBell initialAlertes={alertes} />
         </header>
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto w-full max-w-6xl">{children}</div>

@@ -2,12 +2,25 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
 import type { AlerteItem } from "@/lib/notifications";
 
-export function NotificationBell({ alertes }: { alertes: AlerteItem[] }) {
+export function NotificationBell({ initialAlertes }: { initialAlertes: AlerteItem[] }) {
+  const [alertes, setAlertes] = useState(initialAlertes);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // La mise en page partagée ne se re-rend pas à chaque navigation (cache routeur de Next.js) :
+  // sans ça, la cloche resterait figée sur l'état vu à l'arrivée sur l'app. On revérifie donc
+  // nous-mêmes à chaque changement de page et à chaque ouverture du menu.
+  useEffect(() => {
+    fetch("/api/alertes")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setAlertes(data))
+      .catch(() => {});
+  }, [pathname]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -17,11 +30,24 @@ export function NotificationBell({ alertes }: { alertes: AlerteItem[] }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  function toggleOpen() {
+    setOpen((v) => {
+      const next = !v;
+      if (next) {
+        fetch("/api/alertes")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => data && setAlertes(data))
+          .catch(() => {});
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         aria-label="Notifications"
         className="relative flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-border hover:bg-surface-muted"
       >

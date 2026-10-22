@@ -66,16 +66,21 @@ export async function getAlertesActives(): Promise<AlerteItem[]> {
   for (const p of patients) {
     const dernierTug = p.bilans[0]?.tugTemps;
     if (dernierTug !== null && dernierTug !== undefined && dernierTug > 12) {
-      alertes.push({ type: "Risque de chute", label: `${p.prenom} ${p.nom}`, sub: `TUG ${dernierTug}s`, href: `/patients/${p.id}` });
+      alertes.push({ type: "Risque de chute", label: `${p.prenom} ${p.nom}`, sub: `TUG ${dernierTug}s`, href: `/patients/${p.id}?tab=bilans` });
     }
     if (p.statutSuivi === "Bilan initial à faire" && p.createdAt < sevenDaysAgo) {
-      alertes.push({ type: "Bilan initial en retard", label: `${p.prenom} ${p.nom}`, sub: "Créé il y a plus de 7 jours", href: `/patients/${p.id}` });
+      alertes.push({
+        type: "Bilan initial en retard",
+        label: `${p.prenom} ${p.nom}`,
+        sub: "Créé il y a plus de 7 jours",
+        href: `/patients/${p.id}?tab=bilans`,
+      });
     }
     if (p.objectifs[0]) {
-      alertes.push({ type: "Objectif en retard", label: `${p.prenom} ${p.nom}`, sub: p.objectifs[0].texteSMART, href: `/patients/${p.id}` });
+      alertes.push({ type: "Objectif en retard", label: `${p.prenom} ${p.nom}`, sub: p.objectifs[0].texteSMART, href: `/patients/${p.id}?tab=objectifs` });
     }
     if (p.seances[0]) {
-      alertes.push({ type: "Séance manquée", label: `${p.prenom} ${p.nom}`, sub: p.seances[0].type ?? "Séance", href: `/patients/${p.id}` });
+      alertes.push({ type: "Séance manquée", label: `${p.prenom} ${p.nom}`, sub: p.seances[0].type ?? "Séance", href: `/patients/${p.id}?tab=seances` });
     }
     if (
       journalInactifDepuis({
@@ -85,7 +90,7 @@ export async function getAlertesActives(): Promise<AlerteItem[]> {
         now,
       })
     ) {
-      alertes.push({ type: "Journal non rempli", label: `${p.prenom} ${p.nom}`, sub: "Relance à envisager", href: `/patients/${p.id}` });
+      alertes.push({ type: "Journal non rempli", label: `${p.prenom} ${p.nom}`, sub: "Relance à envisager", href: `/patients/${p.id}?tab=suivi` });
     }
   }
 

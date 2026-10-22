@@ -202,7 +202,7 @@ export default async function DashboardPage() {
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {bilansEnRetard.map((p) => (
-                    <Link key={p.id} href={`/patients/${p.id}`} className="block text-xs hover:underline">
+                    <Link key={p.id} href={`/patients/${p.id}?tab=bilans`} className="block text-xs hover:underline">
                       {p.prenom} {p.nom} — créé le {formatDate(p.createdAt)}
                     </Link>
                   ))}
@@ -313,6 +313,7 @@ export default async function DashboardPage() {
                 label: `${s.patient.prenom} ${s.patient.nom}`,
                 sub: `${s.type ?? "Séance"} du ${formatDate(s.date)}`,
               }))}
+              tab="seances"
             />
           )}
           {patientsAtRisqueChute.length > 0 && (
@@ -323,6 +324,7 @@ export default async function DashboardPage() {
                 label: `${p.prenom} ${p.nom}`,
                 sub: `${p.bilans[0]?.tugTemps}s`,
               }))}
+              tab="bilans"
             />
           )}
           {objectifsEnRetard.length > 0 && (
@@ -333,6 +335,7 @@ export default async function DashboardPage() {
                 label: `${o.patient.prenom} ${o.patient.nom}`,
                 sub: o.texteSMART,
               }))}
+              tab="objectifs"
             />
           )}
           {journalNonRempli.length > 0 && (
@@ -343,6 +346,7 @@ export default async function DashboardPage() {
                 label: `${p.prenom} ${p.nom}`,
                 sub: p.journalEntrees[0] ? `Dernier journal : ${formatDate(p.journalEntrees[0].date)}` : "Aucun journal rempli",
               }))}
+              tab="suivi"
             />
           )}
         </div>
@@ -413,10 +417,12 @@ function AlertCard({
   title,
   items,
   hrefPrefix = "/patients",
+  tab,
 }: {
   title: string;
   items: { id: string; label: string; sub: string }[];
   hrefPrefix?: string;
+  tab?: string;
 }) {
   return (
     <Card>
@@ -430,7 +436,7 @@ function AlertCard({
           {items.map((item) => (
             <Link
               key={item.id}
-              href={hrefPrefix === "/patients" ? `/patients/${item.id}` : hrefPrefix}
+              href={hrefPrefix === "/patients" ? `/patients/${item.id}${tab ? `?tab=${tab}` : ""}` : hrefPrefix}
               className="flex items-center justify-between rounded-[var(--radius-sm)] px-2 py-1.5 text-sm hover:bg-surface-muted"
             >
               <span className="font-medium">{item.label}</span>

@@ -21,8 +21,18 @@ function toDateInput(d: Date | null) {
   return d ? d.toISOString().slice(0, 10) : null;
 }
 
-export default async function PatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+const TABS_VALIDES = ["identite", "entretien", "bilans", "objectifs", "ipaq", "nutrition", "seances", "suivi", "portail"];
+
+export default async function PatientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
+  const { tab } = await searchParams;
+  const ongletInitial = tab && TABS_VALIDES.includes(tab) ? tab : "identite";
 
   const patient = await prisma.patient.findUnique({
     where: { id },
@@ -83,7 +93,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <Tabs defaultValue="identite">
+      <Tabs defaultValue={ongletInitial}>
         <TabsList>
           <TabsTrigger value="identite">Identité</TabsTrigger>
           <TabsTrigger value="entretien">Entretien initial</TabsTrigger>
