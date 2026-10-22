@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
 
 const STATUTS = ["Tous", "Nouveau", "Contacté", "Converti", "Perdu"] as const;
@@ -28,6 +30,7 @@ const STATUT_BADGE: Record<string, string> = {
 };
 
 export function ProspectsList({ prospects }: { prospects: ProspectRow[] }) {
+  const [recherche, setRecherche] = useState("");
   const [statutFiltre, setStatutFiltre] = useState<(typeof STATUTS)[number]>("Tous");
   const [sourceFiltre, setSourceFiltre] = useState<string | null>(null);
 
@@ -36,11 +39,25 @@ export function ProspectsList({ prospects }: { prospects: ProspectRow[] }) {
   const filtres = prospects.filter((p) => {
     if (statutFiltre !== "Tous" && p.statut !== statutFiltre) return false;
     if (sourceFiltre && p.source !== sourceFiltre) return false;
+    const q = recherche.trim().toLowerCase();
+    if (q) {
+      const cible = [p.nom, p.email, p.telephone].filter(Boolean).join(" ").toLowerCase();
+      if (!cible.includes(q)) return false;
+    }
     return true;
   });
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="relative max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+        <Input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Nom, email, téléphone…"
+          className="pl-9"
+        />
+      </div>
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap gap-1.5">
           {STATUTS.map((s) => (
