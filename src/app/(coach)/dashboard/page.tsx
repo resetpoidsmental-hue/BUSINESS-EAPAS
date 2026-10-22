@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatDate, formatHeure, formatCurrency, dateKeyParis } from "@/lib/utils";
 import { journalInactifDepuis, SEUIL_JOURNAL_JOURS } from "@/lib/relances";
+import { auMoinsUneIntegrationConfiguree } from "@/lib/integrations";
+import { ChecklistDemarrage } from "./components/checklist-demarrage";
 
 const STATUT_ORDER = ["Bilan initial à faire", "Suivi en cours", "Bilan final fait", "Suivi terminé"] as const;
 const STATUT_COLOR: Record<string, string> = {
@@ -38,6 +40,7 @@ export default async function DashboardPage() {
     prelevementsEchecs,
     prelevementsEnAttente,
     prelevementsReussisMois,
+    settings,
   ] = await Promise.all([
       prisma.patient.count(),
       prisma.patient.count({ where: { statutSuivi: "Suivi en cours" } }),
@@ -92,7 +95,19 @@ export default async function DashboardPage() {
         _sum: { montant: true },
         _count: { _all: true },
       }),
+      prisma.settings.findUnique({ where: { id: 1 } }),
     ]);
+
+  const checklistItems = [
+    { label: "Créer un premier patient", done: totalPatients > 0, href: "/patients/nouveau", cta: "Créer" },
+    { label: "Activer le portail patient", done: settings?.portalEnabled ?? false, href: "/reglages", cta: "Activer" },
+    {
+      label: "Configurer au moins une intégration (IA, email, paiements ou Telegram)",
+      done: auMoinsUneIntegrationConfiguree(),
+      href: "/reglages",
+      cta: "Configurer",
+    },
+  ];
 
   const aujourdhuiKey = dateKeyParis(now);
   const seancesAujourdhui = seancesAutourAujourdhui.filter((s) => dateKeyParis(s.date) === aujourdhuiKey);
@@ -122,6 +137,8 @@ export default async function DashboardPage() {
   return (
     <div>
       <PageHeader title="Tableau de bord" description="Vue d'ensemble de ton activité." />
+
+      <ChecklistDemarrage items={checklistItems} />
 
       <Card className="mb-6 border-primary/30 bg-primary/5">
         <CardContent className="p-5">
@@ -345,17 +362,6 @@ export default async function DashboardPage() {
             </Card>
           )}
         </div>
-      )}
-
-      {totalPatients === 0 && (
-        <Card className="mt-6">
-          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
-            <p className="text-sm text-muted">Ton tableau de bord se remplira dès ton premier dossier patient.</p>
-            <Link href="/patients/nouveau" className="text-sm font-medium text-primary hover:underline">
-              Créer le premier dossier →
-            </Link>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
