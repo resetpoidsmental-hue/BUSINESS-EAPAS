@@ -41,6 +41,7 @@ export default async function DashboardPage() {
     prelevementsEnAttente,
     prelevementsReussisMois,
     settings,
+    ticketsSAVOuverts,
   ] = await Promise.all([
       prisma.patient.count(),
       prisma.patient.count({ where: { statutSuivi: "Suivi en cours" } }),
@@ -96,6 +97,11 @@ export default async function DashboardPage() {
         _count: { _all: true },
       }),
       prisma.settings.findUnique({ where: { id: 1 } }),
+      prisma.sAVTicket.findMany({
+        where: { statut: { not: "Résolu" } },
+        include: { patient: { select: { id: true, nom: true, prenom: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
   const checklistItems = [
@@ -142,33 +148,68 @@ export default async function DashboardPage() {
 
       <Card className="mb-6 border-primary/30 bg-primary/5">
         <CardContent className="p-5">
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
-            <Link href="/agenda" className="text-sm font-semibold hover:underline">
-              Aujourd&apos;hui
-            </Link>
-            <Badge variant="default">{seancesAujourdhui.length}</Badge>
+            <h2 className="text-sm font-semibold">Aujourd&apos;hui</h2>
+            <span className="text-xs text-muted">{formatDate(now)}</span>
             <Link href="/agenda" className="ml-auto text-xs font-medium text-primary hover:underline">
               Voir l&apos;agenda complet →
             </Link>
           </div>
-          {seancesAujourdhui.length === 0 ? (
-            <p className="text-sm text-muted">Aucun rendez-vous aujourd&apos;hui.</p>
-          ) : (
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {seancesAujourdhui.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/patients/${s.patient.id}`}
-                  className="flex items-center gap-2 text-sm hover:underline"
-                >
-                  <span className="font-semibold text-primary">{formatHeure(s.date)}</span>
-                  <span>{s.patient.prenom} {s.patient.nom}</span>
-                  {s.statut === "Faite" && <span className="text-xs text-muted">(faite)</span>}
-                </Link>
-              ))}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Séances ({seancesAujourdhui.length})
+              </p>
+              {seancesAujourdhui.length === 0 ? (
+                <p className="text-xs text-muted">Aucun rendez-vous aujourd&apos;hui.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {seancesAujourdhui.map((s) => (
+                    <Link key={s.id} href={`/patients/${s.patient.id}`} className="flex items-center gap-2 text-xs hover:underline">
+                      <span className="font-semibold text-primary">{formatHeure(s.date)}</span>
+                      <span>
+                        {s.patient.prenom} {s.patient.nom}
+                      </span>
+                      {s.statut === "Faite" && <span className="text-muted">(faite)</span>}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Tickets SAV ouverts ({ticketsSAVOuverts.length})
+              </p>
+              {ticketsSAVOuverts.length === 0 ? (
+                <p className="text-xs text-muted">Aucun ticket en attente.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {ticketsSAVOuverts.map((t) => (
+                    <Link key={t.id} href="/sav" className="block text-xs hover:underline">
+                      {t.patient ? `${t.patient.prenom} ${t.patient.nom}` : "Sans patient"} — {t.sujet}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Bilans en retard ({bilansEnRetard.length})
+              </p>
+              {bilansEnRetard.length === 0 ? (
+                <p className="text-xs text-muted">Rien en retard.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {bilansEnRetard.map((p) => (
+                    <Link key={p.id} href={`/patients/${p.id}`} className="block text-xs hover:underline">
+                      {p.prenom} {p.nom} — créé le {formatDate(p.createdAt)}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -247,8 +288,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {(bilansEnRetard.length > 0 ||
-        patientsAtRisqueChute.length > 0 ||
+      {(patientsAtRisqueChute.length > 0 ||
         objectifsEnRetard.length > 0 ||
         seancesManquees.length > 0 ||
         journalNonRempli.length > 0 ||
@@ -282,16 +322,6 @@ export default async function DashboardPage() {
                 id: p.id,
                 label: `${p.prenom} ${p.nom}`,
                 sub: `${p.bilans[0]?.tugTemps}s`,
-              }))}
-            />
-          )}
-          {bilansEnRetard.length > 0 && (
-            <AlertCard
-              title="Bilan initial en retard (>7j)"
-              items={bilansEnRetard.map((p) => ({
-                id: p.id,
-                label: `${p.prenom} ${p.nom}`,
-                sub: formatDate(p.createdAt),
               }))}
             />
           )}

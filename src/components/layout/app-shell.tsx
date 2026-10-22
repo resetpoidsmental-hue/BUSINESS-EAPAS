@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/app/connexion/actions";
+import { NotificationBell } from "./notification-bell";
+import type { AlerteItem } from "@/lib/notifications";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -40,10 +42,12 @@ const NAV_ITEMS = [
 export function AppShell({
   nom,
   portalEnabled,
+  alertes,
   children,
 }: {
   nom: string;
   portalEnabled: boolean;
+  alertes: AlerteItem[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -129,14 +133,16 @@ export function AppShell({
       )}
 
       <div className="flex min-h-screen flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3 md:hidden">
+        <header className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3 md:px-8">
           <button
             onClick={() => setOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] hover:bg-surface-muted"
+            className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] hover:bg-surface-muted md:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-sm font-semibold">EAPAS Suite</span>
+          <span className="text-sm font-semibold md:hidden">EAPAS Suite</span>
+          <div className="flex-1" />
+          <NotificationBell alertes={alertes} />
         </header>
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
