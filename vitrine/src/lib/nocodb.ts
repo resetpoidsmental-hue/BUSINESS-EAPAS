@@ -42,7 +42,8 @@ async function getTableId(name: string): Promise<string | null> {
   try {
     const ids = await tableIdsPromise;
     return ids[name] ?? null;
-  } catch {
+  } catch (err) {
+    console.error(`[nocodb] résolution des tables échouée :`, err);
     tableIdsPromise = null;
     return null;
   }
@@ -57,7 +58,8 @@ async function fetchRecords<T>(
   try {
     const data = await nocodbFetch(`/api/v2/tables/${tableId}/records?${params}`);
     return (data.list ?? []) as T[];
-  } catch {
+  } catch (err) {
+    console.error(`[nocodb] lecture de "${tableName}" échouée :`, err);
     return null;
   }
 }
@@ -65,7 +67,7 @@ async function fetchRecords<T>(
 export async function getFormules(): Promise<Formule[]> {
   const rows = await fetchRecords<Formule>(
     "Formules",
-    "where=(Statut,eq,Actif)&sort=Ordre&limit=50"
+    `where=(Statut,eq,${encodeURIComponent("Actif")})&sort=Ordre&limit=50`
   );
   return rows && rows.length > 0 ? rows : FORMULES_SECOURS;
 }
@@ -76,9 +78,10 @@ export async function getFormuleBySlug(slug: string): Promise<Formule | null> {
 }
 
 export async function getArticles(categorie?: string): Promise<Article[]> {
+  const statutFilter = `(Statut,eq,${encodeURIComponent("Publié")})`;
   const filter = categorie
-    ? `where=(Statut,eq,Publié)~and(Categorie,eq,${encodeURIComponent(categorie)})&sort=-DatePublication&limit=100`
-    : "where=(Statut,eq,Publié)&sort=-DatePublication&limit=100";
+    ? `where=${statutFilter}~and(Categorie,eq,${encodeURIComponent(categorie)})&sort=-DatePublication&limit=100`
+    : `where=${statutFilter}&sort=-DatePublication&limit=100`;
   const rows = await fetchRecords<Article>("Articles", filter);
   if (rows === null) {
     return categorie
