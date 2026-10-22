@@ -24,6 +24,12 @@ export default function ConfidentialitePage() {
           Si tu deviens patient·e, tes données de santé sont ensuite gérées dans un
           espace séparé, auto-hébergé, avec ton consentement explicite.
         </p>
+        <p>
+          Ce site utilise Umami, un outil de mesure d&rsquo;audience auto-hébergé qui
+          ne dépose aucun cookie et ne collecte aucune donnée permettant de
+          t&rsquo;identifier individuellement (adresse IP anonymisée, pas de profilage
+          publicitaire).
+        </p>
       </div>
     </div>
   );
