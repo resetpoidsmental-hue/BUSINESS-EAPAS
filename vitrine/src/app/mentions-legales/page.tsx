@@ -10,8 +10,11 @@ export default function MentionsLegalesPage() {
         <p>
           <strong>Éditeur du site</strong> — Martial MILON, Enseignant en Activité
           Physique Adaptée et Santé (EAPAS) &amp; Coach Nutrition, exerçant en tant
-          qu&rsquo;auto-entrepreneur. [Adresse, SIRET et coordonnées à compléter dans les
-          Réglages de ton activité.]
+          qu&rsquo;auto-entrepreneur (SIRET : 944 049 329 00013). Contact :{" "}
+          <a href="mailto:contact@sante-and-co.com" className="underline">
+            contact@sante-and-co.com
+          </a>
+          .
         </p>
         <p>
           <strong>Hébergement</strong> — Ce site est hébergé sur un serveur privé
