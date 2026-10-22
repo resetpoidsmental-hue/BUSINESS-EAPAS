@@ -12,6 +12,7 @@ import {
   type AnalyseSuiviState,
 } from "../../actions";
 import { SEUIL_JOURNAL_JOURS } from "@/lib/relances";
+import { ReprogrammerSeance } from "@/components/reprogrammer-seance";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -86,18 +87,21 @@ function MessageAttention({ patientId, seance }: { patientId: string; seance: Se
         <p className="text-sm">
           {seance.type ?? "Séance"} du {formatDate(seance.date)} — jamais confirmée (ni faite, ni annulée)
         </p>
-        {!sendState.success && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={suggestPending}
-            onClick={() => suggestFormAction(new FormData())}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            {suggestPending ? "Génération…" : "Suggérer un message avec l'IA"}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {!sendState.success && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={suggestPending}
+              onClick={() => suggestFormAction(new FormData())}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {suggestPending ? "Génération…" : "Suggérer un message avec l'IA"}
+            </Button>
+          )}
+          <ReprogrammerSeance seanceId={seance.id} patientId={patientId} />
+        </div>
       </div>
 
       {suggestState.error && <p className="text-sm text-danger">{suggestState.error}</p>}

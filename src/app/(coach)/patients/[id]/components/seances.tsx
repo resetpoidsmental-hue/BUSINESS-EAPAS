@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { addSeance, updateSeanceStatut, deleteSeance, type ActionState } from "../../actions";
 import { genererFicheSeanceAction, validerFicheSeanceAction, type GenererState, type ValiderState } from "../../../assistant/actions";
+import { ReprogrammerSeance } from "@/components/reprogrammer-seance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -138,6 +139,8 @@ function SeanceCard({ patientId, seance }: { patientId: string; seance: SeanceIt
             </div>
           </div>
         </div>
+
+        <ReprogrammerSeance seanceId={seance.id} patientId={patientId} />
 
         {ficheExistante ? (
           <FicheSeanceCard fiche={ficheExistante} />

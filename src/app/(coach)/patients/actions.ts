@@ -15,6 +15,10 @@ import {
   assistantIADisponible,
 } from "@/lib/ai";
 import { buildPatientContext, buildSuiviContext } from "@/lib/patient-context";
+import { verifierDisponibilite, declarerCreneauExceptionnel } from "@/lib/disponibilite";
+import { envoyerNotificationPatient, emailDisponible } from "@/lib/email";
+import { formatDateHeureParis } from "@/lib/utils";
+import type { Patient, Seance } from "@prisma/client";
 
 export interface ActionState {
   error?: string;
@@ -538,6 +542,92 @@ export async function deleteSeance(seanceId: string, patientId: string) {
   await prisma.seance.delete({ where: { id: seanceId } });
   revalidatePath(`/patients/${patientId}`);
   revalidatePath("/agenda");
+}
+
+export interface ReprogrammerState {
+  error?: string;
+  success?: string;
+  needsConfirmation?: boolean;
+  dateProposee?: string;
+}
+
+/**
+ * Prévient le patient dans son espace + par email qu'une séance a été reprogrammée. Déclenchée
+ * uniquement par le clic du coach sur « Valider » — jamais automatiquement de son propre chef.
+ */
+async function appliquerReprogrammation(seance: Seance, patient: Patient, nouvelleDate: Date): Promise<string> {
+  const ancienneDate = seance.date;
+  await prisma.seance.update({
+    where: { id: seance.id },
+    data: { date: nouvelleDate, statut: "Planifiée", rappel2hEnvoye: false },
+  });
+
+  const texte = `Ta séance du ${formatDateHeureParis(ancienneDate)} a été reprogrammée au ${formatDateHeureParis(nouvelleDate)} par ton coach.`;
+  await prisma.messageCoach.create({ data: { patientId: seance.patientId, contenu: texte } });
+
+  if (patient.email && emailDisponible()) {
+    try {
+      await envoyerNotificationPatient({
+        destinataire: patient.email,
+        nomPatient: `${patient.prenom} ${patient.nom}`,
+        sujet: "Votre séance a été reprogrammée",
+        texte,
+      });
+    } catch (e) {
+      console.error("Échec de l'email de notification de reprogrammation:", e);
+    }
+  }
+
+  revalidatePath(`/patients/${seance.patientId}`);
+  revalidatePath("/agenda");
+  revalidatePath("/dashboard");
+
+  return `Séance reprogrammée au ${formatDateHeureParis(nouvelleDate)}. Patient prévenu dans son espace${patient.email ? " + par email." : "."}`;
+}
+
+export async function reprogrammerSeanceAction(
+  seanceId: string,
+  patientId: string,
+  _prev: ReprogrammerState,
+  formData: FormData
+): Promise<ReprogrammerState> {
+  const dateStr = str(formData, "date");
+  if (!dateStr) return { error: "Choisis une date et une heure." };
+  const nouvelleDate = new Date(dateStr);
+  if (Number.isNaN(nouvelleDate.getTime())) return { error: "Date invalide." };
+
+  const seance = await prisma.seance.findUnique({ where: { id: seanceId }, include: { patient: true } });
+  if (!seance || seance.patientId !== patientId) return { error: "Séance introuvable." };
+
+  const { disponible, conflit } = await verifierDisponibilite(nouvelleDate, seanceId);
+  if (conflit) return { error: "Ce créneau est déjà pris par une autre séance." };
+  if (!disponible) return { needsConfirmation: true, dateProposee: nouvelleDate.toISOString() };
+
+  const success = await appliquerReprogrammation(seance, seance.patient, nouvelleDate);
+  return { success };
+}
+
+export async function confirmerReprogrammationExceptionnelleAction(
+  seanceId: string,
+  patientId: string,
+  _prev: ReprogrammerState,
+  formData: FormData
+): Promise<ReprogrammerState> {
+  const dateISO = str(formData, "dateISO");
+  if (!dateISO) return { error: "Date manquante." };
+  const nouvelleDate = new Date(dateISO);
+
+  const seance = await prisma.seance.findUnique({ where: { id: seanceId }, include: { patient: true } });
+  if (!seance || seance.patientId !== patientId) return { error: "Séance introuvable." };
+
+  // Revérifie au cas où un autre créneau aurait été pris entre-temps — un vrai conflit reste
+  // bloquant même pour un horaire exceptionnel (on ne double-réserve jamais).
+  const { conflit } = await verifierDisponibilite(nouvelleDate, seanceId);
+  if (conflit) return { error: "Ce créneau vient d'être pris entre-temps." };
+
+  await declarerCreneauExceptionnel(nouvelleDate, `Reprogrammation exceptionnelle — ${seance.patient.prenom} ${seance.patient.nom}`);
+  const success = await appliquerReprogrammation(seance, seance.patient, nouvelleDate);
+  return { success };
 }
 
 export async function generatePatientAccess(patientId: string) {

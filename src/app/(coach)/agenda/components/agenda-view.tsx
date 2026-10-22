@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { updateSeanceStatut, deleteSeance } from "../../patients/actions";
+import { ReprogrammerSeance } from "@/components/reprogrammer-seance";
 import {
   reserverCreneauPatientAction,
   reserverCreneauProspectAction,
@@ -332,24 +333,27 @@ export function AgendaView({
 
       {selectedSeance && (
         <Card className="border-primary">
-          <CardContent className="flex flex-wrap items-center gap-3 p-4">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-bold">{selectedSeance.patientNom}</span>
-              <span className="text-xs text-muted">{seanceLabel(selectedSeance)}</span>
+          <CardContent className="flex flex-col gap-3 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold">{selectedSeance.patientNom}</span>
+                <span className="text-xs text-muted">{seanceLabel(selectedSeance)}</span>
+              </div>
+              <div className="flex-1" />
+              <Button type="button" variant="outline" onClick={refermer}>
+                Fermer
+              </Button>
+              <Button type="button" variant="outline" className="border-danger text-danger" onClick={() => marquer("Annulée")} disabled={pending}>
+                Marquer annulée
+              </Button>
+              <Button type="button" variant="destructive" onClick={supprimer} disabled={pending}>
+                Supprimer
+              </Button>
+              <Button type="button" onClick={() => marquer("Faite")} disabled={pending}>
+                Marquer faite
+              </Button>
             </div>
-            <div className="flex-1" />
-            <Button type="button" variant="outline" onClick={refermer}>
-              Fermer
-            </Button>
-            <Button type="button" variant="outline" className="border-danger text-danger" onClick={() => marquer("Annulée")} disabled={pending}>
-              Marquer annulée
-            </Button>
-            <Button type="button" variant="destructive" onClick={supprimer} disabled={pending}>
-              Supprimer
-            </Button>
-            <Button type="button" onClick={() => marquer("Faite")} disabled={pending}>
-              Marquer faite
-            </Button>
+            <ReprogrammerSeance seanceId={selectedSeance.id} patientId={selectedSeance.patientId} />
           </CardContent>
         </Card>
       )}
