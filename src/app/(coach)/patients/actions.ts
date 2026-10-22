@@ -16,6 +16,7 @@ import {
 } from "@/lib/ai";
 import { buildPatientContext, buildSuiviContext } from "@/lib/patient-context";
 import { verifierDisponibilite, declarerCreneauExceptionnel } from "@/lib/disponibilite";
+import { parseDatetimeLocalParis } from "@/lib/agenda";
 import { envoyerNotificationPatient, emailDisponible } from "@/lib/email";
 import { formatDateHeureParis } from "@/lib/utils";
 import type { Patient, Seance } from "@prisma/client";
@@ -385,8 +386,8 @@ export async function creerSeancesPlanifieesAction(
     const typeRaw = (item as Record<string, unknown>).type;
     const noteRaw = (item as Record<string, unknown>).note;
     if (typeof dateHeureRaw !== "string") continue;
-    const d = new Date(dateHeureRaw);
-    if (Number.isNaN(d.getTime())) continue;
+    const d = parseDatetimeLocalParis(dateHeureRaw);
+    if (!d) continue;
     aCreer.push({
       date: d,
       type: typeof typeRaw === "string" && typeRaw ? typeRaw : null,
@@ -512,7 +513,7 @@ export async function deleteBilanNutrition(bilanId: string, patientId: string) {
 }
 
 export async function addSeance(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const dateSeance = date(formData, "date");
+  const dateSeance = parseDatetimeLocalParis(str(formData, "date"));
   if (!dateSeance) return { error: "La date est obligatoire." };
 
   await prisma.seance.create({
@@ -591,10 +592,8 @@ export async function reprogrammerSeanceAction(
   _prev: ReprogrammerState,
   formData: FormData
 ): Promise<ReprogrammerState> {
-  const dateStr = str(formData, "date");
-  if (!dateStr) return { error: "Choisis une date et une heure." };
-  const nouvelleDate = new Date(dateStr);
-  if (Number.isNaN(nouvelleDate.getTime())) return { error: "Date invalide." };
+  const nouvelleDate = parseDatetimeLocalParis(str(formData, "date"));
+  if (!nouvelleDate) return { error: "Choisis une date et une heure." };
 
   const seance = await prisma.seance.findUnique({ where: { id: seanceId }, include: { patient: true } });
   if (!seance || seance.patientId !== patientId) return { error: "Séance introuvable." };

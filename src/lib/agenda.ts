@@ -72,3 +72,17 @@ export function heureParis(date: Date): number {
   const h = parts.find((p) => p.type === "hour")?.value ?? "0";
   return Number(h) % 24;
 }
+
+/**
+ * Parse la valeur brute d'un <input type="datetime-local"> ("AAAA-MM-JJTHH:mm") comme une heure
+ * murale Europe/Paris plutôt que l'heure locale du serveur (le conteneur tourne en UTC — sans ça,
+ * "15:30" saisi par le coach serait enregistré comme 15:30 UTC, soit 17:30 à Paris). Renvoie null
+ * si la valeur est vide ou mal formée.
+ */
+export function parseDatetimeLocalParis(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
+  if (!m) return null;
+  const [year, month, day, heure, minute] = m.slice(1).map(Number);
+  return parisHeureVersDate({ year, month, day }, heure, minute);
+}
