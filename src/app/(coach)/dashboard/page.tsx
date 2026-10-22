@@ -113,6 +113,12 @@ export default async function DashboardPage() {
       href: "/reglages",
       cta: "Configurer",
     },
+    {
+      label: "Faire la visite guidée de l'application",
+      done: settings?.visiteGuideeFaite ?? false,
+      cta: "Découvrir",
+      key: "visite-guidee",
+    },
   ];
 
   const aujourdhuiKey = dateKeyParis(now);

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { creerSauvegarde, type SauvegardeInfo } from "@/lib/backup";
 
 export interface ActionState {
   error?: string;
@@ -90,4 +91,31 @@ export async function supprimerCreneauExceptionnelAction(id: string) {
   await prisma.creneauExceptionnel.delete({ where: { id } });
   revalidatePath("/reglages");
   revalidatePath("/agenda");
+}
+
+export interface SauvegardeActionState {
+  error?: string;
+  sauvegarde?: SauvegardeInfo;
+}
+
+export async function sauvegarderMaintenantAction(): Promise<SauvegardeActionState> {
+  try {
+    const sauvegarde = creerSauvegarde();
+    revalidatePath("/reglages");
+    return { sauvegarde };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la sauvegarde." };
+  }
+}
+
+/** Marquée une fois la visite guidée terminée ou passée — fait disparaître l'item de la checklist
+ * de démarrage. Peut être relancée à tout moment depuis Réglages sans que ça la "démarque". */
+export async function marquerVisiteGuideeFaiteAction() {
+  await prisma.settings.upsert({
+    where: { id: 1 },
+    update: { visiteGuideeFaite: true },
+    create: { id: 1, visiteGuideeFaite: true },
+  });
+  revalidatePath("/dashboard");
+  revalidatePath("/reglages");
 }

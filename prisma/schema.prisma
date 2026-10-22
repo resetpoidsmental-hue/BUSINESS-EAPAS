@@ -24,6 +24,7 @@ model Settings {
   mentionTVA     String   @default("TVA non applicable, article 293 B du CGI")
   tauxUrssaf     Float    @default(24.6)
   portalEnabled  Boolean  @default(false)
+  visiteGuideeFaite Boolean @default(false)
   assuranceRCPro String?
   prochainDevis  Int      @default(1)
   prochainFacture Int     @default(1)

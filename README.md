@@ -177,16 +177,25 @@ devis/factures).
 ## Sauvegardes
 
 Toutes tes données vivent dans un unique fichier SQLite, stocké dans le volume
-Docker `eapas_data`. Pour le sauvegarder régulièrement (recommandé : un script
-cron hebdomadaire) :
+Docker `eapas_data`. L'application sait sauvegarder elle-même sa base (copie
+cohérente, jamais une copie de fichier brute) et ne garde que les 14 dernières
+copies — visible et déclenchable à la main depuis **Réglages**. Pour
+l'automatiser chaque nuit (recommandé), ajoute sur le VPS :
 
 ```bash
-docker compose exec app sh -c "cp /app/data/prod.db /app/data/backup-$(date +%F).db"
-docker cp $(docker compose ps -q app):/app/data/backup-$(date +%F).db ./sauvegardes/
+crontab -e
 ```
 
-Ou plus simplement, sauvegarde le volume Docker complet avec ton outil de
-sauvegarde habituel.
+```
+0 3 * * * curl -s -X POST -H "x-cron-secret: <la même valeur que CRON_SECRET>" https://<APP_HOST>/api/cron/sauvegarde
+```
+
+Les sauvegardes sont stockées dans le même volume Docker que la base
+(`/app/data/backups/`), donc à l'abri d'une reconstruction du conteneur —
+mais pas d'une perte du volume lui-même. Pour une vraie sécurité, récupère-les
+régulièrement hors du serveur (le bouton « Télécharger la dernière
+sauvegarde » dans Réglages, ou `docker cp` depuis ce dossier) ou sauvegarde le
+volume Docker complet avec ton outil habituel.
 
 ## Mettre à jour l'application
 
