@@ -313,7 +313,7 @@ export default async function DashboardPage() {
                 label: `${s.patient.prenom} ${s.patient.nom}`,
                 sub: `${s.type ?? "Séance"} du ${formatDate(s.date)}`,
               }))}
-              tab="seances"
+              tab="suivi"
             />
           )}
           {patientsAtRisqueChute.length > 0 && (

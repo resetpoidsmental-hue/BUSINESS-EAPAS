@@ -80,7 +80,7 @@ export async function getAlertesActives(): Promise<AlerteItem[]> {
       alertes.push({ type: "Objectif en retard", label: `${p.prenom} ${p.nom}`, sub: p.objectifs[0].texteSMART, href: `/patients/${p.id}?tab=objectifs` });
     }
     if (p.seances[0]) {
-      alertes.push({ type: "Séance manquée", label: `${p.prenom} ${p.nom}`, sub: p.seances[0].type ?? "Séance", href: `/patients/${p.id}?tab=seances` });
+      alertes.push({ type: "Séance manquée", label: `${p.prenom} ${p.nom}`, sub: p.seances[0].type ?? "Séance", href: `/patients/${p.id}?tab=suivi` });
     }
     if (
       journalInactifDepuis({
