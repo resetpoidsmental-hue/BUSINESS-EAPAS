@@ -304,8 +304,9 @@ curl -s -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
 
 ### 3. Déclencher les rappels
 
-Même principe que les prélèvements : 3 tâches cron appellent l'app à heures
-fixes (le `CRON_SECRET` existant protège aussi ces appels). Sur le VPS :
+Même principe que les prélèvements : des tâches cron appellent l'app à
+heures fixes (le `CRON_SECRET` existant protège aussi ces appels). Sur le
+VPS :
 
 ```bash
 crontab -e
@@ -317,7 +318,15 @@ Ajoute :
 45 20 * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=veille"
 45 7 * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=matin"
 */15 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappel2h"
+7 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=relanceProspects"
 ```
+
+Le dernier (`relanceProspects`) propose, une fois par heure, un brouillon de
+relance par email pour chaque prospect encore "Nouveau" 24h après sa
+création (site vitrine, quiz ou saisi à la main) — jamais envoyé
+automatiquement : le coach reçoit le brouillon sur Telegram avec deux
+boutons, "Envoyer" ou "Ignorer", et rien ne part sans ce tap explicite.
+Chaque prospect n'est proposé qu'une seule fois, même ignoré.
 
 ## Sécurité & RGPD
 

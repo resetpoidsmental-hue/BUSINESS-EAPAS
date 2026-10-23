@@ -53,6 +53,16 @@ async function traiterCallback(callbackId: string, data: string) {
     return;
   }
 
+  if (action === "relenv") {
+    await envoyerRelanceProspect(seanceId, callbackId);
+    return;
+  }
+
+  if (action === "relign") {
+    await repondreCallbackTelegram(callbackId, "D'accord, rien n'est envoyé.");
+    return;
+  }
+
   const seance = await prisma.seance.findUnique({ where: { id: seanceId }, include: { patient: true } });
   if (!seance) {
     await repondreCallbackTelegram(callbackId, "Séance introuvable (déjà modifiée ailleurs ?).");
@@ -137,6 +147,47 @@ async function deplacerSeance(seance: SeanceAvecPatient, cible: Date) {
   await envoyerMessageTelegram(
     `✅ Séance déplacée à ${formatHeure(cible)} — ${seance.patient.prenom} ${seance.patient.nom}\nPatient prévenu dans son espace${seance.patient.email ? " + par email." : "."}`
   );
+}
+
+/**
+ * Envoie le brouillon de relance déjà rédigé par l'IA pour ce prospect — jamais appelée
+ * automatiquement, uniquement en réaction au tap du coach sur "Envoyer" dans Telegram.
+ */
+async function envoyerRelanceProspect(prospectId: string, callbackId: string) {
+  const prospect = await prisma.prospect.findUnique({ where: { id: prospectId } });
+  if (!prospect) {
+    await repondreCallbackTelegram(callbackId, "Prospect introuvable (déjà supprimé ?).");
+    return;
+  }
+  if (prospect.relanceEmailEnvoyee) {
+    await repondreCallbackTelegram(callbackId, "Déjà envoyé.");
+    return;
+  }
+  if (!prospect.email || !prospect.relanceEmailBrouillon) {
+    await repondreCallbackTelegram(callbackId, "Impossible d'envoyer (email ou brouillon manquant).");
+    return;
+  }
+  if (!emailDisponible()) {
+    await repondreCallbackTelegram(callbackId, "L'envoi d'email n'est pas configuré (RESEND_API_KEY).");
+    return;
+  }
+
+  try {
+    await envoyerNotificationPatient({
+      destinataire: prospect.email,
+      nomPatient: prospect.nom,
+      sujet: "Santé & Co — on reste disponible pour en discuter",
+      texte: prospect.relanceEmailBrouillon,
+    });
+    await prisma.prospect.update({
+      where: { id: prospect.id },
+      data: { relanceEmailEnvoyee: true, statut: prospect.statut === "Nouveau" ? "Contacté" : prospect.statut },
+    });
+    await repondreCallbackTelegram(callbackId, `Email envoyé à ${prospect.nom}.`);
+  } catch (e) {
+    console.error("Échec de l'envoi de la relance prospect:", e);
+    await repondreCallbackTelegram(callbackId, "Échec de l'envoi, réessaie plus tard.");
+  }
 }
 
 async function avertirPatient(seance: SeanceAvecPatient, sujet: string, texte: string) {

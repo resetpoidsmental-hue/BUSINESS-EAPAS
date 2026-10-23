@@ -756,6 +756,48 @@ export async function genererReponseSAV({ patientContext, sujet, message }: Gene
   });
 }
 
+const MESSAGE_RELANCE_PROSPECT_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé
+(EAPAS) / coach nutrition indépendant. Un prospect a laissé ses coordonnées (via le site vitrine, un quiz, ou un
+contact direct) il y a 24h, et le coach ne l'a pas encore recontacté. Tu rédiges un court email de relance que le
+coach pourra envoyer, pour montrer de la disponibilité sans relancer à l'excès.
+
+Règles impératives, toujours respectées :
+- Le message est un BROUILLON : le coach le relira, pourra le modifier, et décide seul de l'envoyer ou non.
+- Tu ne t'appuies QUE sur les informations fournies (nom, source, message éventuel, formule qui l'intéresse) —
+  jamais une information inventée. Si le prospect a rempli un quiz, tu peux t'y référer brièvement sans répéter de
+  chiffre exact que tu n'es pas sûr de bien interpréter.
+- Ton chaleureux, bref (3 à 5 phrases), jamais insistant ni culpabilisant — pas de "vous n'avez pas répondu" ni de
+  pression commerciale. L'objectif est de rester disponible, pas de relancer agressivement.
+- Propose un prochain pas simple et à faible engagement (répondre à l'email, ou réserver un appel découverte
+  gratuit), jamais un tarif ou un engagement que le prospect n'a pas déjà vu.
+- Tu ne poses aucun diagnostic médical, ne donnes aucune consigne médicale, n'inventes aucun chiffre nutritionnel
+  ou tarifaire.
+- Pas de formule de politesse exagérée ni de ton infantilisant. Signe simplement "Martial", sans emoji.
+- Réponds UNIQUEMENT avec le texte du message, rien d'autre (pas d'objet, pas de guillemets, pas d'explication
+  autour).`;
+
+export interface GenererMessageRelanceProspectParams {
+  nom: string;
+  source: string;
+  /** Message laissé par le prospect (formulaire, résultat de quiz…), ou null si aucun. */
+  message: string | null;
+  /** Nom de la formule qui l'intéresse, ou null si non précisé. */
+  formuleInteressee: string | null;
+}
+
+export async function genererMessageRelanceProspect({
+  nom,
+  source,
+  message,
+  formuleInteressee,
+}: GenererMessageRelanceProspectParams): Promise<string> {
+  return appelerClaudeTexte({
+    system: MESSAGE_RELANCE_PROSPECT_SYSTEM_PROMPT,
+    userContent: `Prénom du prospect : ${nom}\nOrigine : ${source}\nFormule qui l'intéresse : ${formuleInteressee ?? "non précisée"}\nMessage laissé par le prospect : ${message ?? "(aucun)"}\n\nRédige l'email de relance.`,
+    maxTokens: 800,
+  });
+}
+
 export async function genererConditionsAnnulation({
   formule,
   dureeMois,

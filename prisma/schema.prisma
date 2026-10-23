@@ -382,6 +382,11 @@ model Prospect {
   creneauPropose DateTime?
   patientId      String?     @unique
   patient        Patient?    @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  // Relance automatique si le prospect reste "Nouveau" 24h : brouillon IA proposé une seule fois
+  // sur Telegram, jamais renvoyé automatiquement même si le coach ignore la proposition.
+  relancePropositionEnvoyee Boolean @default(false)
+  relanceEmailBrouillon     String?
+  relanceEmailEnvoyee       Boolean @default(false)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 }
