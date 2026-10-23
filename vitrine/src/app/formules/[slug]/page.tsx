@@ -3,6 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormuleBySlug, getFormules } from "@/lib/nocodb";
 
+// Voir le commentaire dans app/page.tsx : NocoDB n'est joignable qu'au runtime,
+// pas au build — generateStaticParams ne verra donc que le contenu de secours ;
+// force-dynamic garantit que la page elle-même se rend avec les vraies données
+// à la requête, même pour un slug absent de la liste pré-générée.
+export const dynamic = "force-dynamic";
+
 export async function generateStaticParams() {
   const formules = await getFormules();
   return formules.map((f) => ({ slug: f.Slug }));

@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "Des recettes simples et équilibrées, pensées pour tenir dans la durée — pas pour un régime de plus. Par Santé & Co.",
 };
 
+// Voir le commentaire dans app/page.tsx : NocoDB n'est joignable qu'au runtime.
+export const dynamic = "force-dynamic";
+
 export default async function RecettesPage() {
   const recettes = await getArticles("Recette");
 

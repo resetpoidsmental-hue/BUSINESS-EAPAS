@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "Réserve ton appel découverte gratuit et sans engagement avec Santé & Co, pour faire le point sur ton parcours et tes objectifs.",
 };
 
+// Voir le commentaire dans app/page.tsx : NocoDB n'est joignable qu'au runtime.
+export const dynamic = "force-dynamic";
+
 export default async function ContactPage() {
   const formules = await getFormules();
 

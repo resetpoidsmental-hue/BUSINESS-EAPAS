@@ -9,6 +9,9 @@ export const metadata: Metadata = {
     "Un accompagnement nutrition + activité physique adaptée, pas un programme générique. Découvre les formules de Santé & Co et réserve ton appel découverte.",
 };
 
+// Voir le commentaire dans app/page.tsx : NocoDB n'est joignable qu'au runtime.
+export const dynamic = "force-dynamic";
+
 export default async function FormulesPage() {
   const formules = await getFormules();
 

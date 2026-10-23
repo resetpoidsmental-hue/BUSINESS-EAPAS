@@ -4,6 +4,11 @@ import { getArticles, getFormules } from "@/lib/nocodb";
 import { FormuleCard } from "@/components/formule-card";
 import { ArticleCard } from "@/components/article-card";
 
+// NOCODB_URL / NOCODB_API_TOKEN ne sont fournis qu'au runtime du conteneur
+// (env_file), pas au build de l'image — sans ça, Next pré-rendrait cette
+// page au build avec ces variables absentes et figerait le contenu de secours.
+export const dynamic = "force-dynamic";
+
 const PROOF_STATS = [
   { value: "2 ans", label: "d'expérience EAPAS" },
   { value: "30+", label: "clients accompagnés" },

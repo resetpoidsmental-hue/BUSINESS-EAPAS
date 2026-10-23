@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "Des conseils concrets en nutrition et activité physique adaptée pour sortir du yo-yo, publiés chaque semaine par Santé & Co.",
 };
 
+// Voir le commentaire dans app/page.tsx : NocoDB n'est joignable qu'au runtime.
+export const dynamic = "force-dynamic";
+
 export default async function ArticlesPage() {
   const articles = await getArticles();
 

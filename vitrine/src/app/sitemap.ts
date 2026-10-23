@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getArticles, getFormules } from "@/lib/nocodb";
 
+// Voir le commentaire dans app/page.tsx : NocoDB n'est joignable qu'au runtime.
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.SITE_URL || "https://sante-and-co.com";
   const [formules, articles] = await Promise.all([getFormules(), getArticles()]);
