@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
+import { supprimerProspectAction } from "../actions";
 
 const STATUTS = ["Tous", "Nouveau", "Contacté", "Converti", "Perdu"] as const;
 
@@ -131,16 +132,34 @@ export function ProspectsList({ prospects }: { prospects: ProspectRow[] }) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted">{formatDate(p.createdAt)}</td>
-                      <td className="px-4 py-3 text-right">
-                        {p.patientId ? (
-                          <Button asChild size="sm" variant="ghost">
-                            <Link href={`/patients/${p.patientId}`}>Voir la fiche</Link>
-                          </Button>
-                        ) : (
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/prospects/${p.id}/convertir`}>Convertir →</Link>
-                          </Button>
-                        )}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {p.patientId ? (
+                            <Button asChild size="sm" variant="ghost">
+                              <Link href={`/patients/${p.patientId}`}>Voir la fiche</Link>
+                            </Button>
+                          ) : (
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/prospects/${p.id}/convertir`}>Convertir →</Link>
+                            </Button>
+                          )}
+                          <form
+                            action={supprimerProspectAction.bind(null, p.id)}
+                            onSubmit={(e) => {
+                              if (!confirm(`Supprimer définitivement ${p.nom} ? Cette action est irréversible.`)) {
+                                e.preventDefault();
+                              }
+                            }}
+                          >
+                            <button
+                              type="submit"
+                              aria-label={`Supprimer ${p.nom}`}
+                              className="rounded-[var(--radius-sm)] p-1.5 text-muted hover:bg-surface-muted hover:text-danger"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </form>
+                        </div>
                       </td>
                     </tr>
                   ))}

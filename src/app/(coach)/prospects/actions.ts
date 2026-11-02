@@ -43,6 +43,11 @@ export async function changerStatutProspectAction(prospectId: string, statut: st
   revalidatePath("/prospects");
 }
 
+export async function supprimerProspectAction(prospectId: string) {
+  await prisma.prospect.delete({ where: { id: prospectId } });
+  revalidatePath("/prospects");
+}
+
 export interface ResumeAppelState {
   error?: string;
   resume?: ResumeAppel;
