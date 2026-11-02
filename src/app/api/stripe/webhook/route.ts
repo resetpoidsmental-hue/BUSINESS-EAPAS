@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { verifierSignatureWebhook, recupererMoyenPaiement, recupererPaymentIntent, recupererSetupIntent } from "@/lib/stripe";
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 import { nextNumero } from "@/lib/numerotation";
+import { telegramDisponible, envoyerMessageTelegram } from "@/lib/telegram";
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
@@ -127,7 +128,7 @@ async function gererCheckoutComplete(session: Stripe.Checkout.Session) {
 async function gererPaymentIntentFinal(paymentIntent: Stripe.PaymentIntent, resultat: "Réussi" | "Échec") {
   const prelevement = await prisma.prelevement.findFirst({
     where: { stripePaymentIntentId: paymentIntent.id },
-    include: { abonnement: true, facture: true },
+    include: { abonnement: true, facture: true, patient: { select: { prenom: true, nom: true } } },
   });
   // Pas de ligne trouvée : probablement le tout premier paiement, déjà traité par
   // checkout.session.completed — on ignore pour ne jamais créer de doublon.
@@ -170,5 +171,17 @@ async function gererPaymentIntentFinal(paymentIntent: Stripe.PaymentIntent, resu
       numero: prelevement.facture?.numero ?? "",
       montant: prelevement.montant,
     });
+  }
+
+  // C'est le cas le plus fréquent en pratique : un prélèvement SEPA échoue souvent plusieurs
+  // jours après la tentative initiale (hors de toute session cron), donc sans cette alerte le
+  // coach ne l'aurait découvert qu'en ouvrant l'app par hasard.
+  if (resultat === "Échec" && telegramDisponible()) {
+    try {
+      const nomPatient = prelevement.patient ? `${prelevement.patient.prenom} ${prelevement.patient.nom}` : "Patient inconnu";
+      await envoyerMessageTelegram(`⚠️ Prélèvement échoué (différé) — ${nomPatient}\n${motifEchec ?? "Échec"}`);
+    } catch (e) {
+      console.error("Échec de l'alerte Telegram prélèvement différé:", e);
+    }
   }
 }

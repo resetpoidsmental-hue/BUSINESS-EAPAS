@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { prelieverAbonnement, stripeDisponible } from "@/lib/stripe";
 import { nextNumero } from "@/lib/numerotation";
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
+import { telegramDisponible, envoyerMessageTelegram } from "@/lib/telegram";
 
 /**
  * Appelée une fois par jour (cron sur le VPS) : prélève tous les abonnements dont la date de
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
   });
 
   const resultats: { patient: string; statut: string }[] = [];
+  const echecs: string[] = [];
 
   for (const abonnement of abonnementsDus) {
     try {
@@ -87,15 +89,26 @@ export async function POST(req: NextRequest) {
       } else if (!resultat.enAttente) {
         await prisma.facture.update({ where: { id: facture.id }, data: { statut: "Impayée" } });
         await prisma.abonnement.update({ where: { id: abonnement.id }, data: { statutPaiement: "Échec paiement" } });
+        echecs.push(`${abonnement.patient.prenom} ${abonnement.patient.nom} — ${resultat.motifEchec ?? "Échec"}`);
       }
-      // En attente (SEPA) : on laisse tout en l'état, la confirmation arrivera par webhook.
+      // En attente (SEPA) : on laisse tout en l'état, la confirmation arrivera par webhook (voir
+      // gererPaymentIntentFinal, qui alerte aussi Telegram en cas d'échec différé).
 
       resultats.push({ patient: `${abonnement.patient.prenom} ${abonnement.patient.nom}`, statut: statutPrelevement });
     } catch (e) {
-      resultats.push({
-        patient: `${abonnement.patient.prenom} ${abonnement.patient.nom}`,
-        statut: `Erreur : ${e instanceof Error ? e.message : "inconnue"}`,
-      });
+      const message = e instanceof Error ? e.message : "inconnue";
+      resultats.push({ patient: `${abonnement.patient.prenom} ${abonnement.patient.nom}`, statut: `Erreur : ${message}` });
+      echecs.push(`${abonnement.patient.prenom} ${abonnement.patient.nom} — Erreur technique : ${message}`);
+    }
+  }
+
+  // Seule alerte proactive de l'app qui manquait : jusqu'ici un prélèvement échoué n'était visible
+  // que si quelqu'un ouvrait l'app et regardait la cloche ou le Tableau de bord.
+  if (echecs.length > 0 && telegramDisponible()) {
+    try {
+      await envoyerMessageTelegram(`⚠️ ${echecs.length} prélèvement${echecs.length > 1 ? "s" : ""} échoué${echecs.length > 1 ? "s" : ""}\n\n${echecs.join("\n")}`);
+    } catch (e) {
+      console.error("Échec de l'alerte Telegram prélèvements:", e);
     }
   }
 
