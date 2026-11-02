@@ -106,6 +106,12 @@ export function Quiz({ formules }: { formules: Formule[] }) {
   const minutesKey = currentActivite ? (`${currentActivite.key}Minutes` as const) : null;
 
   let canAdvance = true;
+  // Sur les étapes marche/modérée/intense, un jour sélectionné sans minutes associées laisserait
+  // la valeur par défaut à 0 et annulerait silencieusement la contribution de cette activité au
+  // score IPAQ — on exige une réponse minutes dès qu'au moins un jour est choisi.
+  if (currentActivite && joursKey && minutesKey) {
+    canAdvance = r[joursKey] === 0 || r[minutesKey] > 0;
+  }
   if (step === 4) canAdvance = !!r.objectif;
   if (step === 5) canAdvance = r.prenom.trim().length > 0 && /\S+@\S+\.\S+/.test(r.email);
 
