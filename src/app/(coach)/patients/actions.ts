@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { generateAccessCode, hashAccessCode } from "@/lib/auth";
+import { generateAccessCode, hashAccessCode, requireCoachSession } from "@/lib/auth";
 import { calculerScoreIPAQ, calculerBilanNutritionnel, TESTS_PASS, type Sexe, type TestPassKey } from "@/lib/calculs";
 import {
   genererObjectifSMART,
@@ -26,10 +26,24 @@ export interface ActionState {
   success?: string;
 }
 
+/**
+ * Basé sur le plus grand numéro déjà attribué cette année, jamais sur un simple COUNT() : un
+ * compteur par comptage se décale après toute suppression de patient et finit par reproposer un
+ * numéro déjà pris par un dossier existant (la contrainte @unique fait alors échouer la création).
+ */
 export async function nextNumDossier() {
   const year = new Date().getFullYear();
-  const count = await prisma.patient.count();
-  return `DP-${year}-${String(count + 1).padStart(3, "0")}`;
+  const prefix = `DP-${year}-`;
+  const existants = await prisma.patient.findMany({
+    where: { numDossier: { startsWith: prefix } },
+    select: { numDossier: true },
+  });
+  let max = 0;
+  for (const p of existants) {
+    const seq = Number(p.numDossier.slice(prefix.length));
+    if (Number.isFinite(seq) && seq > max) max = seq;
+  }
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
 function str(formData: FormData, key: string) {
@@ -82,6 +96,7 @@ export async function createPatient(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function updatePatient(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const prenom = str(formData, "prenom");
   if (!nom || !prenom) return { error: "Le nom et le prénom sont obligatoires." };
@@ -126,6 +141,7 @@ export async function updatePatient(patientId: string, _prev: ActionState, formD
 }
 
 export async function deletePatient(patientId: string) {
+  await requireCoachSession();
   await prisma.patient.delete({ where: { id: patientId } });
   revalidatePath("/patients");
   redirect("/patients");
@@ -288,6 +304,9 @@ export async function addObjectif(patientId: string, _prev: ActionState, formDat
 }
 
 export async function toggleObjectif(objectifId: string, patientId: string, atteint: boolean) {
+  await requireCoachSession();
+  const existant = await prisma.objectifSMART.findUnique({ where: { id: objectifId } });
+  if (!existant || existant.patientId !== patientId) return;
   await prisma.objectifSMART.update({ where: { id: objectifId }, data: { atteint } });
   revalidatePath(`/patients/${patientId}`);
 }
@@ -508,6 +527,9 @@ export async function updateBilanNutrition(
 }
 
 export async function deleteBilanNutrition(bilanId: string, patientId: string) {
+  await requireCoachSession();
+  const existant = await prisma.bilanNutritionnel.findUnique({ where: { id: bilanId } });
+  if (!existant || existant.patientId !== patientId) return;
   await prisma.bilanNutritionnel.delete({ where: { id: bilanId } });
   revalidatePath(`/patients/${patientId}`);
 }
@@ -534,12 +556,18 @@ export async function addSeance(patientId: string, _prev: ActionState, formData:
 }
 
 export async function updateSeanceStatut(seanceId: string, patientId: string, statut: string) {
+  await requireCoachSession();
+  const existante = await prisma.seance.findUnique({ where: { id: seanceId } });
+  if (!existante || existante.patientId !== patientId) return;
   await prisma.seance.update({ where: { id: seanceId }, data: { statut } });
   revalidatePath(`/patients/${patientId}`);
   revalidatePath("/agenda");
 }
 
 export async function deleteSeance(seanceId: string, patientId: string) {
+  await requireCoachSession();
+  const existante = await prisma.seance.findUnique({ where: { id: seanceId } });
+  if (!existante || existante.patientId !== patientId) return;
   await prisma.seance.delete({ where: { id: seanceId } });
   revalidatePath(`/patients/${patientId}`);
   revalidatePath("/agenda");
@@ -630,6 +658,7 @@ export async function confirmerReprogrammationExceptionnelleAction(
 }
 
 export async function generatePatientAccess(patientId: string) {
+  await requireCoachSession();
   const code = generateAccessCode();
   const codeHash = hashAccessCode(code);
 
@@ -644,6 +673,7 @@ export async function generatePatientAccess(patientId: string) {
 }
 
 export async function revokePatientAccess(patientId: string) {
+  await requireCoachSession();
   await prisma.patientAccess.updateMany({ where: { patientId }, data: { actif: false } });
   revalidatePath(`/patients/${patientId}`);
 }

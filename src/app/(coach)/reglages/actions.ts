@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { creerSauvegarde, type SauvegardeInfo } from "@/lib/backup";
+import { requireCoachSession } from "@/lib/auth";
 
 export interface ActionState {
   error?: string;
@@ -15,6 +16,7 @@ function str(formData: FormData, key: string) {
 }
 
 export async function updateSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const nomEntreprise = str(formData, "nomEntreprise");
   if (!nomEntreprise) return { error: "Le nom de l'activité est obligatoire." };
 
@@ -46,6 +48,7 @@ export async function updateSettings(_prev: ActionState, formData: FormData): Pr
 }
 
 export async function togglePortal(enabled: boolean) {
+  await requireCoachSession();
   await prisma.settings.upsert({
     where: { id: 1 },
     update: { portalEnabled: enabled },
@@ -56,6 +59,7 @@ export async function togglePortal(enabled: boolean) {
 }
 
 export async function enregistrerHorairesAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   for (let jour = 0; jour < 7; jour++) {
     const actif = formData.get(`actif_${jour}`) === "on";
     const debut = str(formData, `debut_${jour}`) ?? "09:00";
@@ -73,6 +77,7 @@ export async function enregistrerHorairesAction(_prev: ActionState, formData: Fo
 }
 
 export async function ajouterCreneauExceptionnelAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const dateStr = str(formData, "date");
   const debut = str(formData, "debut");
   const fin = str(formData, "fin");
@@ -88,6 +93,7 @@ export async function ajouterCreneauExceptionnelAction(_prev: ActionState, formD
 }
 
 export async function supprimerCreneauExceptionnelAction(id: string) {
+  await requireCoachSession();
   await prisma.creneauExceptionnel.delete({ where: { id } });
   revalidatePath("/reglages");
   revalidatePath("/agenda");
@@ -99,6 +105,7 @@ export interface SauvegardeActionState {
 }
 
 export async function sauvegarderMaintenantAction(): Promise<SauvegardeActionState> {
+  await requireCoachSession();
   try {
     const sauvegarde = creerSauvegarde();
     revalidatePath("/reglages");

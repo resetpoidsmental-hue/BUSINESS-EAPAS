@@ -7,6 +7,7 @@ import { buildPatientContext } from "@/lib/patient-context";
 import { isFicheSeance, type FicheSeance } from "@/lib/fiche-seance";
 import { telegramDisponible, envoyerMessageTelegram } from "@/lib/telegram";
 import { formatDateHeureParis } from "@/lib/utils";
+import { requireCoachSession } from "@/lib/auth";
 
 export interface GenererState {
   error?: string;
@@ -14,6 +15,7 @@ export interface GenererState {
 }
 
 export async function genererFicheSeanceAction(_prev: GenererState, formData: FormData): Promise<GenererState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -42,6 +44,7 @@ export interface ValiderState {
 }
 
 export async function validerFicheSeanceAction(_prev: ValiderState, formData: FormData): Promise<ValiderState> {
+  await requireCoachSession();
   const seanceId = formData.get("seanceId");
   const patientId = formData.get("patientId");
   const ficheJson = formData.get("ficheJson");

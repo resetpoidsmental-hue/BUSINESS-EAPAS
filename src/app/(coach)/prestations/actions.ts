@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { genererDescriptionMarketing, assistantIADisponible } from "@/lib/ai";
+import { requireCoachSession } from "@/lib/auth";
 
 export interface ActionState {
   error?: string;
@@ -19,6 +20,7 @@ export async function genererDescriptionMarketingAction(
   _prev: DescriptionMarketingState,
   formData: FormData
 ): Promise<DescriptionMarketingState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -55,6 +57,7 @@ function num(formData: FormData, key: string) {
 }
 
 export async function creerPrestationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const type = str(formData, "type");
   const tarif = num(formData, "tarif");
@@ -85,6 +88,7 @@ export async function modifierPrestationAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const type = str(formData, "type");
   const tarif = num(formData, "tarif");
@@ -113,6 +117,7 @@ export async function modifierPrestationAction(
 }
 
 export async function toggleActifPrestationAction(prestationId: string, actif: boolean) {
+  await requireCoachSession();
   await prisma.prestation.update({ where: { id: prestationId }, data: { actif } });
   revalidatePath("/prestations");
 }

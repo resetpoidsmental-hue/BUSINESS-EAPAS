@@ -9,7 +9,7 @@ import { formatHeure, formatDateHeureParis } from "@/lib/utils";
 const DELTAS_MS: Record<string, number> = { h1: 60 * 60 * 1000, h2: 2 * 60 * 60 * 1000, j1: 24 * 60 * 60 * 1000 };
 
 interface TelegramUpdate {
-  callback_query?: { id: string; data?: string };
+  callback_query?: { id: string; data?: string; message?: { chat?: { id?: number | string } } };
 }
 
 type SeanceAvecPatient = { id: string; patientId: string; date: Date; patient: Patient };
@@ -35,6 +35,15 @@ export async function POST(req: NextRequest) {
 
   const cq = update.callback_query;
   if (!cq || typeof cq.data !== "string") return NextResponse.json({ ok: true });
+
+  // Le secret ci-dessus prouve seulement que la requête vient des serveurs Telegram — pas que
+  // c'est TOI qui as tapé le bouton. Sans ce contrôle, un token de bot ou une URL de webhook qui
+  // fuite laisserait n'importe qui déclencher un vrai envoi (ex. relenv) depuis un autre chat.
+  const chatId = cq.message?.chat?.id !== undefined ? String(cq.message.chat.id) : undefined;
+  if (!process.env.TELEGRAM_CHAT_ID || chatId !== process.env.TELEGRAM_CHAT_ID) {
+    await repondreCallbackTelegram(cq.id, "Chat non reconnu.");
+    return NextResponse.json({ ok: true });
+  }
 
   try {
     await traiterCallback(cq.id, cq.data);
@@ -159,16 +168,24 @@ async function envoyerRelanceProspect(prospectId: string, callbackId: string) {
     await repondreCallbackTelegram(callbackId, "Prospect introuvable (déjà supprimé ?).");
     return;
   }
-  if (prospect.relanceEmailEnvoyee) {
-    await repondreCallbackTelegram(callbackId, "Déjà envoyé.");
-    return;
-  }
   if (!prospect.email || !prospect.relanceEmailBrouillon) {
     await repondreCallbackTelegram(callbackId, "Impossible d'envoyer (email ou brouillon manquant).");
     return;
   }
   if (!emailDisponible()) {
     await repondreCallbackTelegram(callbackId, "L'envoi d'email n'est pas configuré (RESEND_API_KEY).");
+    return;
+  }
+
+  // Réclame la ligne de façon atomique AVANT d'envoyer : si Telegram redélivre le même tap
+  // (webhook lent), deux appels concurrents ne doivent jamais passer tous les deux — seul celui
+  // qui gagne cette mise à jour continue, l'autre voit `count: 0` et s'arrête.
+  const claim = await prisma.prospect.updateMany({
+    where: { id: prospectId, relanceEmailEnvoyee: false },
+    data: { relanceEmailEnvoyee: true, statut: prospect.statut === "Nouveau" ? "Contacté" : prospect.statut },
+  });
+  if (claim.count === 0) {
+    await repondreCallbackTelegram(callbackId, "Déjà envoyé.");
     return;
   }
 
@@ -179,14 +196,10 @@ async function envoyerRelanceProspect(prospectId: string, callbackId: string) {
       sujet: "Santé & Co — on reste disponible pour en discuter",
       texte: prospect.relanceEmailBrouillon,
     });
-    await prisma.prospect.update({
-      where: { id: prospect.id },
-      data: { relanceEmailEnvoyee: true, statut: prospect.statut === "Nouveau" ? "Contacté" : prospect.statut },
-    });
     await repondreCallbackTelegram(callbackId, `Email envoyé à ${prospect.nom}.`);
   } catch (e) {
     console.error("Échec de l'envoi de la relance prospect:", e);
-    await repondreCallbackTelegram(callbackId, "Échec de l'envoi, réessaie plus tard.");
+    await repondreCallbackTelegram(callbackId, "Échec de l'envoi après réservation — vérifie et recontacte-le manuellement si besoin.");
   }
 }
 

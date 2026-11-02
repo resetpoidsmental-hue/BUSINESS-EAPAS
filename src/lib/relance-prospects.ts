@@ -33,11 +33,6 @@ export async function proposerRelancesProspects() {
         formuleInteressee: p.prestation?.nom ?? null,
       });
 
-      await prisma.prospect.update({
-        where: { id: p.id },
-        data: { relancePropositionEnvoyee: true, relanceEmailBrouillon: brouillon },
-      });
-
       const lignesBoutons: TelegramBouton[][] = [
         [
           { texte: "✉️ Envoyer", callbackData: `relenv:${p.id}` },
@@ -53,7 +48,14 @@ export async function proposerRelancesProspects() {
         brouillon,
       ].join("\n");
 
+      // Marqué "proposé" seulement APRÈS l'envoi réussi : sinon un simple hoquet de l'API
+      // Telegram (le coach ne voit jamais le message) exclurait ce prospect pour toujours du
+      // prochain passage du cron, puisque relancePropositionEnvoyee ne redevient jamais false.
       await envoyerMessageTelegram(texte, lignesBoutons);
+      await prisma.prospect.update({
+        where: { id: p.id },
+        data: { relancePropositionEnvoyee: true, relanceEmailBrouillon: brouillon },
+      });
     } catch (e) {
       console.error(`Échec de la proposition de relance pour le prospect ${p.id}:`, e);
     }

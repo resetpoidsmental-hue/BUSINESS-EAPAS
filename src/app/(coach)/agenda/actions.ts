@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { nextNumDossier } from "../patients/actions";
+import { nextNumero } from "@/lib/numerotation";
+import { requireCoachSession } from "@/lib/auth";
 
 export interface ActionState {
   error?: string;
@@ -10,6 +12,7 @@ export interface ActionState {
 }
 
 export async function reserverCreneauPatientAction(patientId: string, dateISO: string): Promise<ActionState> {
+  await requireCoachSession();
   if (!patientId) return { error: "Choisis un patient." };
 
   await prisma.seance.create({
@@ -22,6 +25,7 @@ export async function reserverCreneauPatientAction(patientId: string, dateISO: s
 }
 
 export async function reserverCreneauProspectAction(prospectId: string, dateISO: string): Promise<ActionState> {
+  await requireCoachSession();
   if (!prospectId) return { error: "Choisis un prospect." };
 
   await prisma.prospect.update({
@@ -34,11 +38,13 @@ export async function reserverCreneauProspectAction(prospectId: string, dateISO:
 }
 
 export async function annulerCreneauProspectAction(prospectId: string) {
+  await requireCoachSession();
   await prisma.prospect.update({ where: { id: prospectId }, data: { creneauPropose: null } });
   revalidatePath("/agenda");
 }
 
 export async function confirmerCreneauProspectAction(prospectId: string): Promise<ActionState> {
+  await requireCoachSession();
   const prospect = await prisma.prospect.findUnique({ where: { id: prospectId }, include: { prestation: true } });
   if (!prospect) return { error: "Prospect introuvable." };
   if (prospect.patientId) return { error: "Ce prospect a déjà été converti." };
@@ -63,10 +69,7 @@ export async function confirmerCreneauProspectAction(prospectId: string): Promis
   });
 
   if (prospect.prestation) {
-    const settings = await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
-    const year = new Date().getFullYear();
-    const numero = `D-${year}-${String(settings.prochainDevis).padStart(3, "0")}`;
-    await prisma.settings.update({ where: { id: 1 }, data: { prochainDevis: settings.prochainDevis + 1 } });
+    const numero = await nextNumero("devis");
     await prisma.devis.create({
       data: {
         numero,

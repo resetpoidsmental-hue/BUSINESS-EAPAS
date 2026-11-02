@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { assistantIADisponible, genererPropositionMenu } from "@/lib/ai";
 import { buildPatientContext } from "@/lib/patient-context";
 import { CATEGORIES_RATION, MEAL_KEYS, MEAL_LABELS, calculerEcartsRation, type Repartition } from "@/lib/categories-ration";
+import { requireCoachSession } from "@/lib/auth";
 
 function str(formData: FormData, key: string) {
   const v = formData.get(key);
@@ -22,6 +23,7 @@ export async function creerModeleRationAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const targetKcal = Number(str(formData, "targetKcal"));
   const ration = str(formData, "rationJson");
@@ -49,6 +51,7 @@ export async function modifierModeleRationAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const targetKcal = Number(str(formData, "targetKcal"));
   const ration = str(formData, "rationJson");
@@ -71,6 +74,7 @@ export async function modifierModeleRationAction(
 }
 
 export async function dupliquerModeleRationAction(formData: FormData) {
+  await requireCoachSession();
   const modeleId = str(formData, "modeleId");
   const patientId = str(formData, "patientId");
   if (!modeleId || !patientId) return;
@@ -95,6 +99,7 @@ export async function dupliquerModeleRationAction(formData: FormData) {
 }
 
 export async function supprimerModeleRationAction(modeleId: string, patientId: string | null) {
+  await requireCoachSession();
   await prisma.modeleRation.delete({ where: { id: modeleId } });
 
   revalidatePath("/nutrition/rations");
@@ -111,6 +116,7 @@ export async function suggererMenuIAAction(
   _prev: SuggestionMenuState,
   _formData: FormData
 ): Promise<SuggestionMenuState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -148,6 +154,7 @@ export async function suggererMenuIAAction(
 }
 
 export async function envoyerMenuAction(modeleId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const menuType = str(formData, "menuTypeJson");
   if (!menuType) return { error: "Menu manquant." };
 
@@ -165,6 +172,7 @@ export async function envoyerMenuAction(modeleId: string, _prev: ActionState, fo
 }
 
 export async function creerRecetteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const titre = str(formData, "titre");
   const repas = str(formData, "repasJson");
   const categories = str(formData, "categoriesJson");
@@ -193,6 +201,7 @@ export async function modifierRecetteAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const titre = str(formData, "titre");
   const repas = str(formData, "repasJson");
   const categories = str(formData, "categoriesJson");
@@ -219,6 +228,7 @@ export async function modifierRecetteAction(
 }
 
 export async function supprimerRecetteAction(recetteId: string) {
+  await requireCoachSession();
   await prisma.recette.delete({ where: { id: recetteId } });
   revalidatePath("/nutrition/recettes");
 }

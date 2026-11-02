@@ -5,6 +5,7 @@ import { verifierSignatureWebhook, recupererMoyenPaiement, recupererPaymentInten
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 import { nextNumero } from "@/lib/numerotation";
 import { telegramDisponible, envoyerMessageTelegram } from "@/lib/telegram";
+import { ajouterUnMois } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
@@ -82,9 +83,13 @@ async function gererCheckoutComplete(session: Stripe.Checkout.Session) {
     return;
   }
 
+  // Stripe livre ses webhooks au moins une fois : un simple délai de réponse déclenche une
+  // redélivrance même sans erreur applicative. Sans ce garde-fou, la deuxième livraison du même
+  // événement recréerait une facture + un prélèvement en double pour le même paiement.
+  if (abonnement.prelevementActif && abonnement.dateDernierPaiement) return;
+
   // Premier paiement : enregistre la carte ET crée la facture + le prélèvement correspondants.
-  const prochain = new Date();
-  prochain.setMonth(prochain.getMonth() + 1);
+  const prochain = ajouterUnMois(new Date());
 
   await prisma.abonnement.update({
     where: { id: abonnementId },
@@ -133,7 +138,9 @@ async function gererPaymentIntentFinal(paymentIntent: Stripe.PaymentIntent, resu
   // Pas de ligne trouvée : probablement le tout premier paiement, déjà traité par
   // checkout.session.completed — on ignore pour ne jamais créer de doublon.
   if (!prelevement) return;
-  if (prelevement.statut === "Réussi") return;
+  // Pas seulement "déjà Réussi" : un même échec peut aussi être livré deux fois (SEPA), ce qui
+  // renvoyait l'alerte Telegram et ré-exécutait toutes les écritures une seconde fois pour rien.
+  if (prelevement.statut === resultat) return;
 
   const motifEchec = resultat === "Échec" ? (paymentIntent.last_payment_error?.message ?? "Paiement refusé") : null;
 
@@ -156,11 +163,7 @@ async function gererPaymentIntentFinal(paymentIntent: Stripe.PaymentIntent, resu
     where: { id: prelevement.abonnementId },
     data:
       resultat === "Réussi"
-        ? (() => {
-            const prochain = new Date();
-            prochain.setMonth(prochain.getMonth() + 1);
-            return { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" };
-          })()
+        ? { dateDernierPaiement: new Date(), prochainPaiement: ajouterUnMois(new Date()), statutPaiement: "À jour" }
         : { statutPaiement: "Échec paiement" },
   });
 

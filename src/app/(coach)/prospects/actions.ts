@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { nextNumDossier } from "../patients/actions";
 import { nextNumero } from "@/lib/numerotation";
 import { genererResumeAppel, genererPropositionOffre, assistantIADisponible, type ResumeAppel, type PropositionOffre } from "@/lib/ai";
+import { requireCoachSession } from "@/lib/auth";
 
 export interface ActionState {
   error?: string;
@@ -18,6 +19,7 @@ function str(formData: FormData, key: string) {
 }
 
 export async function creerProspectAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const source = str(formData, "source");
   if (!nom) return { error: "Indique au moins un nom." };
@@ -39,11 +41,13 @@ export async function creerProspectAction(_prev: ActionState, formData: FormData
 }
 
 export async function changerStatutProspectAction(prospectId: string, statut: string) {
+  await requireCoachSession();
   await prisma.prospect.update({ where: { id: prospectId }, data: { statut } });
   revalidatePath("/prospects");
 }
 
 export async function supprimerProspectAction(prospectId: string) {
+  await requireCoachSession();
   await prisma.prospect.delete({ where: { id: prospectId } });
   revalidatePath("/prospects");
 }
@@ -54,6 +58,7 @@ export interface ResumeAppelState {
 }
 
 export async function suggererResumeAppelAction(_prev: ResumeAppelState, formData: FormData): Promise<ResumeAppelState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -75,6 +80,7 @@ export interface PropositionOffreState {
 }
 
 export async function genererPropositionOffreAction(_prev: PropositionOffreState, formData: FormData): Promise<PropositionOffreState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -97,6 +103,7 @@ export async function genererPropositionOffreAction(_prev: PropositionOffreState
 }
 
 export async function enregistrerAppelProspectAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const source = str(formData, "source");
   if (!nom) return { error: "Indique au moins un nom avant d'enregistrer." };
@@ -126,6 +133,7 @@ export async function enregistrerAppelProspectAction(_prev: ActionState, formDat
 }
 
 export async function convertirProspectAction(prospectId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const prenom = str(formData, "prenom");
   const nom = str(formData, "nom");
   if (!prenom || !nom) return { error: "Le prénom et le nom sont obligatoires." };

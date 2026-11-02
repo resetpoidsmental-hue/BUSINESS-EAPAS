@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { assistantIADisponible, genererReponseSAV } from "@/lib/ai";
 import { buildPatientContext } from "@/lib/patient-context";
 import { envoyerNotificationPatient, emailDisponible } from "@/lib/email";
+import { requireCoachSession } from "@/lib/auth";
 
 export interface ActionState {
   error?: string;
@@ -17,6 +18,7 @@ function str(formData: FormData, key: string) {
 }
 
 export async function createTicket(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const sujet = str(formData, "sujet");
   if (!sujet) return { error: "Le sujet est obligatoire." };
 
@@ -34,6 +36,7 @@ export async function createTicket(_prev: ActionState, formData: FormData): Prom
 }
 
 export async function updateTicketStatut(ticketId: string, statut: string) {
+  await requireCoachSession();
   await prisma.sAVTicket.update({
     where: { id: ticketId },
     data: { statut, resolvedAt: statut === "Résolu" ? new Date() : null },
@@ -42,6 +45,7 @@ export async function updateTicketStatut(ticketId: string, statut: string) {
 }
 
 export async function deleteTicket(ticketId: string) {
+  await requireCoachSession();
   await prisma.sAVTicket.delete({ where: { id: ticketId } });
   revalidatePath("/sav");
 }
@@ -52,6 +56,7 @@ export interface GenererReponseState {
 }
 
 export async function genererReponseSAVAction(_prev: GenererReponseState, formData: FormData): Promise<GenererReponseState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -78,6 +83,7 @@ export interface EnvoyerReponseState {
 }
 
 export async function envoyerReponseSAVAction(_prev: EnvoyerReponseState, formData: FormData): Promise<EnvoyerReponseState> {
+  await requireCoachSession();
   const ticketId = formData.get("ticketId");
   const texteRaw = formData.get("texte");
   if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket manquant." };

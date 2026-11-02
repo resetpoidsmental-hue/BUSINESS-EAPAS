@@ -3,6 +3,8 @@
  * journée utilisés pour la répartition et le menu type. Les chiffres restent toujours calculés à
  * partir de ces valeurs de référence — jamais estimés ou inventés par l'IA. */
 
+import { dateKeyParis } from "./utils";
+
 export interface CategorieRation {
   key: string;
   label: string;
@@ -160,7 +162,10 @@ export function calculerEcartsRation(
     } catch {
       continue;
     }
-    const dayKey = entry.date.toISOString().slice(0, 10);
+    // dateKeyParis (pas toISOString) : une entrée saisie juste après minuit heure de Paris est
+    // encore "hier" en UTC, ce qui la rangeait dans le mauvais jour et faussait le calcul
+    // d'assiduité (ex. deux entrées le même jour réel comptées comme deux jours différents).
+    const dayKey = dateKeyParis(entry.date);
     for (const meal of MEAL_KEYS) {
       const picks = parsed[meal];
       if (!picks) continue;

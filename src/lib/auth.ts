@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
-import { createHash } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 
 const COACH_COOKIE = "eapas_session";
 const PATIENT_COOKIE = "eapas_patient_session";
@@ -48,8 +48,15 @@ async function verifyToken<T>(token: string): Promise<T | null> {
   }
 }
 
+/**
+ * Les deux cookies de session sont signés avec le même secret, donc sans un
+ * champ de rôle vérifié ici, un token patient valide copié dans le cookie
+ * coach (ou inversement) passerait la vérification de signature et serait
+ * traité comme une session légitime de l'autre rôle — un patient obtiendrait
+ * l'accès complet aux dossiers de tous les patients.
+ */
 export async function createCoachSession(payload: CoachSessionPayload) {
-  const token = await signToken({ ...payload });
+  const token = await signToken({ ...payload, kind: "coach" });
   const store = await cookies();
   store.set(COACH_COOKIE, token, {
     httpOnly: true,
@@ -60,11 +67,15 @@ export async function createCoachSession(payload: CoachSessionPayload) {
   });
 }
 
-export async function getCoachSession() {
+export async function getCoachSession(): Promise<CoachSessionPayload | null> {
   const store = await cookies();
   const token = store.get(COACH_COOKIE)?.value;
   if (!token) return null;
-  return verifyToken<CoachSessionPayload>(token);
+  const payload = await verifyToken<CoachSessionPayload & { kind?: string }>(token);
+  if (!payload || payload.kind !== "coach" || typeof payload.userId !== "string" || typeof payload.email !== "string") {
+    return null;
+  }
+  return payload;
 }
 
 export async function destroyCoachSession() {
@@ -73,7 +84,7 @@ export async function destroyCoachSession() {
 }
 
 export async function createPatientSession(payload: PatientSessionPayload) {
-  const token = await signToken({ ...payload });
+  const token = await signToken({ ...payload, kind: "patient" });
   const store = await cookies();
   store.set(PATIENT_COOKIE, token, {
     httpOnly: true,
@@ -84,11 +95,15 @@ export async function createPatientSession(payload: PatientSessionPayload) {
   });
 }
 
-export async function getPatientSession() {
+export async function getPatientSession(): Promise<PatientSessionPayload | null> {
   const store = await cookies();
   const token = store.get(PATIENT_COOKIE)?.value;
   if (!token) return null;
-  return verifyToken<PatientSessionPayload>(token);
+  const payload = await verifyToken<PatientSessionPayload & { kind?: string }>(token);
+  if (!payload || payload.kind !== "patient" || typeof payload.patientId !== "string") {
+    return null;
+  }
+  return payload;
 }
 
 export async function destroyPatientSession() {
@@ -96,11 +111,31 @@ export async function destroyPatientSession() {
   store.delete(PATIENT_COOKIE);
 }
 
+/**
+ * Lève une erreur si aucune session coach valide n'est présente. À appeler en
+ * premier dans CHAQUE server action réservée au coach : Next.js expose une
+ * server action comme un endpoint POST indépendant, atteignable directement
+ * (id d'action visible dans le bundle client) sans jamais repasser par le
+ * rendu de la page ni par son layout protégé — le layout seul ne suffit pas.
+ */
+export async function requireCoachSession(): Promise<CoachSessionPayload> {
+  const session = await getCoachSession();
+  if (!session) throw new Error("Non autorisé.");
+  return session;
+}
+
+/** Même principe que requireCoachSession, côté portail patient. */
+export async function requirePatientSession(): Promise<PatientSessionPayload> {
+  const session = await getPatientSession();
+  if (!session) throw new Error("Non autorisé.");
+  return session;
+}
+
 export function generateAccessCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
     if (i === 3) code += "-";
   }
   return code;

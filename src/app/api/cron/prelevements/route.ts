@@ -4,6 +4,7 @@ import { prelieverAbonnement, stripeDisponible } from "@/lib/stripe";
 import { nextNumero } from "@/lib/numerotation";
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 import { telegramDisponible, envoyerMessageTelegram } from "@/lib/telegram";
+import { ajouterUnMois } from "@/lib/utils";
 
 /**
  * Appelée une fois par jour (cron sur le VPS) : prélève tous les abonnements dont la date de
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
       prochainPaiement: { lte: aujourdhui },
       stripeCustomerId: { not: null },
       stripePaymentMethodId: { not: null },
+      // Un prélèvement SEPA met plusieurs jours à se résoudre : sans ce filtre, chaque run
+      // quotidien tant que la réponse précédente est encore "En attente" recréait un second
+      // PaymentIntent bien réel et rechargeait le patient pour la même échéance.
+      prelevements: { none: { statut: "En attente" } },
     },
     include: { patient: { select: { id: true, nom: true, prenom: true } } },
   });
@@ -38,17 +43,9 @@ export async function POST(req: NextRequest) {
 
   for (const abonnement of abonnementsDus) {
     try {
-      const numero = await nextNumero("facture");
-      const facture = await prisma.facture.create({
-        data: {
-          numero,
-          patientId: abonnement.patientId,
-          lignes: JSON.stringify([{ designation: abonnement.formule, quantite: 1, prixUnitaire: abonnement.montantMensuel }]),
-          total: abonnement.montantMensuel,
-          statut: "Émise",
-        },
-      });
-
+      // Le prélèvement Stripe est tenté AVANT de créer la moindre ligne en base : s'il lève une
+      // erreur technique, rien n'est créé (pas de facture orpheline sans ligne de prélèvement),
+      // et comme prochainPaiement n'a pas bougé, demain réessaiera proprement depuis zéro.
       const resultat = await prelieverAbonnement({
         stripeCustomerId: abonnement.stripeCustomerId!,
         stripePaymentMethodId: abonnement.stripePaymentMethodId!,
@@ -59,6 +56,17 @@ export async function POST(req: NextRequest) {
       });
 
       const statutPrelevement = resultat.succes ? "Réussi" : resultat.enAttente ? "En attente" : "Échec";
+      const numero = await nextNumero("facture");
+      const facture = await prisma.facture.create({
+        data: {
+          numero,
+          patientId: abonnement.patientId,
+          lignes: JSON.stringify([{ designation: abonnement.formule, quantite: 1, prixUnitaire: abonnement.montantMensuel }]),
+          total: abonnement.montantMensuel,
+          statut: resultat.succes ? "Payée" : resultat.enAttente ? "Émise" : "Impayée",
+          datePaiement: resultat.succes ? new Date() : null,
+        },
+      });
 
       await prisma.prelevement.create({
         data: {
@@ -73,9 +81,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (resultat.succes) {
-        const prochain = new Date();
-        prochain.setMonth(prochain.getMonth() + 1);
-        await prisma.facture.update({ where: { id: facture.id }, data: { statut: "Payée", datePaiement: new Date() } });
+        const prochain = ajouterUnMois(new Date());
         await prisma.abonnement.update({
           where: { id: abonnement.id },
           data: { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" },
@@ -87,11 +93,10 @@ export async function POST(req: NextRequest) {
           montant: abonnement.montantMensuel,
         });
       } else if (!resultat.enAttente) {
-        await prisma.facture.update({ where: { id: facture.id }, data: { statut: "Impayée" } });
         await prisma.abonnement.update({ where: { id: abonnement.id }, data: { statutPaiement: "Échec paiement" } });
         echecs.push(`${abonnement.patient.prenom} ${abonnement.patient.nom} — ${resultat.motifEchec ?? "Échec"}`);
       }
-      // En attente (SEPA) : on laisse tout en l'état, la confirmation arrivera par webhook (voir
+      // En attente (SEPA) : la facture reste "Émise", la confirmation arrivera par webhook (voir
       // gererPaymentIntentFinal, qui alerte aussi Telegram en cas d'échec différé).
 
       resultats.push({ patient: `${abonnement.patient.prenom} ${abonnement.patient.nom}`, statut: statutPrelevement });

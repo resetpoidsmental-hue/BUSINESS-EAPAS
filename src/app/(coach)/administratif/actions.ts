@@ -6,6 +6,8 @@ import { genererConditionsAnnulation, assistantIADisponible } from "@/lib/ai";
 import { prelieverAbonnement, stripeDisponible } from "@/lib/stripe";
 import { envoyerRecuFactureSiPossible } from "@/lib/recus";
 import { nextNumero } from "@/lib/numerotation";
+import { requireCoachSession } from "@/lib/auth";
+import { ajouterUnMois } from "@/lib/utils";
 
 export interface ActionState {
   error?: string;
@@ -152,6 +154,7 @@ export async function createFacture(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function marquerFacturePayee(factureId: string) {
+  await requireCoachSession();
   await prisma.facture.update({
     where: { id: factureId },
     data: { statut: "Payée", datePaiement: new Date() },
@@ -160,6 +163,7 @@ export async function marquerFacturePayee(factureId: string) {
 }
 
 export async function marquerFactureImpayee(factureId: string) {
+  await requireCoachSession();
   await prisma.facture.update({
     where: { id: factureId },
     data: { statut: "Impayée" },
@@ -168,6 +172,7 @@ export async function marquerFactureImpayee(factureId: string) {
 }
 
 export async function upsertAbonnement(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const patientId = str(formData, "patientId");
   const formule = str(formData, "formule");
   const montantMensuel = num(formData, "montantMensuel");
@@ -200,11 +205,11 @@ export async function upsertAbonnement(_prev: ActionState, formData: FormData): 
 }
 
 export async function marquerPaiementRecu(patientId: string) {
+  await requireCoachSession();
   const abo = await prisma.abonnement.findUnique({ where: { patientId } });
   if (!abo) return;
   const now = new Date();
-  const prochain = new Date(now);
-  prochain.setMonth(prochain.getMonth() + 1);
+  const prochain = ajouterUnMois(now);
 
   await prisma.abonnement.update({
     where: { patientId },
@@ -223,6 +228,7 @@ export async function relancerPrelevementAction(
   _prev: PrelevementActionState,
   _formData: FormData
 ): Promise<PrelevementActionState> {
+  await requireCoachSession();
   if (!stripeDisponible()) return { error: "Stripe n'est pas configuré." };
 
   const prelevement = await prisma.prelevement.findUnique({ where: { id: prelevementId }, include: { abonnement: true } });
@@ -255,8 +261,7 @@ export async function relancerPrelevementAction(
   }
 
   if (resultat.succes) {
-    const prochain = new Date();
-    prochain.setMonth(prochain.getMonth() + 1);
+    const prochain = ajouterUnMois(new Date());
     await prisma.abonnement.update({
       where: { id: abonnement.id },
       data: { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" },
@@ -283,6 +288,7 @@ export async function relancerPrelevementAction(
 }
 
 export async function marquerPrelevementRegleManuellementAction(prelevementId: string) {
+  await requireCoachSession();
   const prelevement = await prisma.prelevement.findUnique({ where: { id: prelevementId } });
   if (!prelevement) return;
 
@@ -292,8 +298,7 @@ export async function marquerPrelevementRegleManuellementAction(prelevementId: s
     await prisma.facture.update({ where: { id: prelevement.factureId }, data: { statut: "Payée", datePaiement: new Date() } });
   }
 
-  const prochain = new Date();
-  prochain.setMonth(prochain.getMonth() + 1);
+  const prochain = ajouterUnMois(new Date());
   await prisma.abonnement.update({
     where: { id: prelevement.abonnementId },
     data: { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" },
