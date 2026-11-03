@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
-import { addBilanNutrition, updateBilanNutrition, deleteBilanNutrition, type ActionState } from "../../actions";
+import { Plus, Sparkles, Pencil, Trash2, FileText } from "lucide-react";
+import {
+  addBilanNutrition,
+  updateBilanNutrition,
+  deleteBilanNutrition,
+  genererProgrammeNutritionnelAction,
+  enregistrerProgrammeNutritionnelAction,
+  type ActionState,
+  type ProgrammeNutritionState,
+} from "../../actions";
 import { dupliquerModeleRationAction } from "../../../nutrition/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +24,106 @@ import { calculerBilanNutritionnel, NIVEAUX_ACTIVITE, OBJECTIFS_PONDERAUX, type 
 import { formatDate, formatNumber } from "@/lib/utils";
 
 const initialState: ActionState = {};
+const initProgrammeGenState: ProgrammeNutritionState = {};
+const initProgrammeSaveState: ProgrammeNutritionState = {};
+
+interface ProgrammeNutritionnel {
+  contenu: string;
+  statut: string;
+  livreLe: Date | null;
+}
+
+const PROGRAMME_STATUT_VARIANT: Record<string, "success" | "warning" | "default"> = {
+  Brouillon: "default",
+  Validé: "warning",
+  Livré: "success",
+};
+
+function ProgrammeNutritionCard({
+  patientId,
+  programme,
+  iaDisponible,
+  patientADesEmail,
+}: {
+  patientId: string;
+  programme: ProgrammeNutritionnel | null;
+  iaDisponible: boolean;
+  patientADesEmail: boolean;
+}) {
+  const [genState, genFormAction, genPending] = useActionState(
+    genererProgrammeNutritionnelAction.bind(null, patientId),
+    initProgrammeGenState
+  );
+  const [saveState, saveFormAction, savePending] = useActionState(
+    enregistrerProgrammeNutritionnelAction.bind(null, patientId),
+    initProgrammeSaveState
+  );
+
+  const [contenu, setContenu] = useState(programme?.contenu ?? "");
+
+  const [lastGen, setLastGen] = useState(genState.programme);
+  if (genState.programme !== lastGen) {
+    setLastGen(genState.programme);
+    if (genState.programme) setContenu(genState.programme);
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <p className="text-sm font-semibold">Programme nutrition personnalisé</p>
+          </div>
+          {programme && <Badge variant={PROGRAMME_STATUT_VARIANT[programme.statut] ?? "muted"}>{programme.statut}</Badge>}
+        </div>
+
+        {programme?.livreLe && (
+          <p className="text-xs text-muted">Livré au patient le {formatDate(programme.livreLe)}.</p>
+        )}
+
+        <form action={genFormAction}>
+          <Button type="submit" size="sm" variant="outline" disabled={genPending || !iaDisponible}>
+            <Sparkles className="h-3.5 w-3.5" />
+            {genPending ? "Génération…" : contenu ? "Régénérer avec l'IA" : "Générer avec l'IA"}
+          </Button>
+          {!iaDisponible && <p className="mt-1.5 text-xs text-muted">Assistant IA non configuré.</p>}
+          {genState.error && <p className="mt-1.5 text-sm text-danger">{genState.error}</p>}
+        </form>
+
+        <Textarea
+          value={contenu}
+          onChange={(e) => setContenu(e.target.value)}
+          rows={14}
+          placeholder="Génère un programme avec l'IA, ou rédige-le toi-même ici."
+          className="font-mono text-xs"
+        />
+
+        <form action={saveFormAction} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="contenu" value={contenu} />
+          <Button type="submit" size="sm" variant="outline" disabled={savePending || !contenu}>
+            Enregistrer comme brouillon
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            name="envoyer"
+            value="1"
+            disabled={savePending || !contenu || !patientADesEmail}
+            title={!patientADesEmail ? "Ce patient n'a pas d'email enregistré." : undefined}
+          >
+            Valider et envoyer au patient
+          </Button>
+        </form>
+        {saveState.error && <p className="text-sm text-danger">{saveState.error}</p>}
+        {saveState.success && <p className="text-sm text-success">{saveState.success}</p>}
+        <p className="text-xs text-muted">
+          L&rsquo;envoi déclenche un email au patient avec le programme, et le rend visible dans son espace personnel.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 interface Bilan {
   id: string;
@@ -55,6 +164,9 @@ export function NutritionPatientSection({
   defaultSexe,
   modeles,
   modelesBibliotheque,
+  programme,
+  iaDisponible,
+  patientADesEmail,
 }: {
   patientId: string;
   bilans: Bilan[];
@@ -62,6 +174,9 @@ export function NutritionPatientSection({
   defaultSexe?: string | null;
   modeles: ModeleRationItem[];
   modelesBibliotheque: ModeleBibliothequeOption[];
+  programme: ProgrammeNutritionnel | null;
+  iaDisponible: boolean;
+  patientADesEmail: boolean;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -122,6 +237,13 @@ export function NutritionPatientSection({
 
   return (
     <div className="flex flex-col gap-6">
+      <ProgrammeNutritionCard
+        patientId={patientId}
+        programme={programme}
+        iaDisponible={iaDisponible}
+        patientADesEmail={patientADesEmail}
+      />
+
       <Card>
         <CardContent className="p-5">
           <form key={editingId ?? "new"} action={formAction} className="flex flex-col gap-5">

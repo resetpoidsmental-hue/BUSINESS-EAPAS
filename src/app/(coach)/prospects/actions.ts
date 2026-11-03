@@ -142,6 +142,12 @@ export async function convertirProspectAction(prospectId: string, _prev: ActionS
   if (!prospect) return { error: "Prospect introuvable." };
   if (prospect.patientId) return { error: "Ce prospect a déjà été converti." };
 
+  const prestationId = str(formData, "prestationId") ?? prospect.prestationId;
+  const prestationChoisie = prestationId ? await prisma.prestation.findUnique({ where: { id: prestationId } }) : null;
+  // Une prestation de type Nutrition fait basculer le dossier sur le suivi nutrition dès la conversion,
+  // pour que le patient apparaisse immédiatement dans le module Nutrition sans réglage manuel du coach.
+  const metier = prestationChoisie?.type.toLowerCase().includes("nutrition") ? "Nutrition" : "EAPAS";
+
   const numDossier = await nextNumDossier();
   const patient = await prisma.patient.create({
     data: {
@@ -150,23 +156,20 @@ export async function convertirProspectAction(prospectId: string, _prev: ActionS
       prenom,
       email: str(formData, "email") ?? prospect.email,
       telephone: str(formData, "telephone") ?? prospect.telephone,
+      metier,
     },
   });
 
-  const prestationId = str(formData, "prestationId") ?? prospect.prestationId;
-  if (prestationId) {
-    const prestation = await prisma.prestation.findUnique({ where: { id: prestationId } });
-    if (prestation) {
-      const numero = await nextNumero("devis");
-      await prisma.devis.create({
-        data: {
-          numero,
-          patientId: patient.id,
-          lignes: JSON.stringify([{ designation: prestation.nom, quantite: 1, prixUnitaire: prestation.tarif }]),
-          total: prestation.tarif,
-        },
-      });
-    }
+  if (prestationChoisie) {
+    const numero = await nextNumero("devis");
+    await prisma.devis.create({
+      data: {
+        numero,
+        patientId: patient.id,
+        lignes: JSON.stringify([{ designation: prestationChoisie.nom, quantite: 1, prixUnitaire: prestationChoisie.tarif }]),
+        total: prestationChoisie.tarif,
+      },
+    });
   }
 
   await prisma.prospect.update({

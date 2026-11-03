@@ -11,6 +11,7 @@ import {
   genererMessageAttention,
   genererMessageRelanceJournal,
   genererObservationsBilan,
+  genererProgrammeNutritionnel,
   analyserSuivi,
   assistantIADisponible,
 } from "@/lib/ai";
@@ -62,6 +63,7 @@ function date(formData: FormData, key: string) {
 }
 
 export async function createPatient(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const nom = str(formData, "nom");
   const prenom = str(formData, "prenom");
   if (!nom || !prenom) return { error: "Le nom et le prénom sont obligatoires." };
@@ -148,6 +150,7 @@ export async function deletePatient(patientId: string) {
 }
 
 export async function addEntretien(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   await prisma.entretienInitial.create({
     data: {
       patientId,
@@ -188,6 +191,7 @@ export async function addEntretien(patientId: string, _prev: ActionState, formDa
  * sa phase), sinon en crée un nouveau. Jamais de doublon silencieux pour une même phase.
  */
 export async function saveBilan(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const phase = str(formData, "phase") ?? "T0";
   const bilanId = str(formData, "bilanId");
 
@@ -256,6 +260,7 @@ export interface GenererObservationsState {
 }
 
 export async function genererObservationsBilanAction(_prev: GenererObservationsState, formData: FormData): Promise<GenererObservationsState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -286,6 +291,7 @@ export async function genererObservationsBilanAction(_prev: GenererObservationsS
 }
 
 export async function addObjectif(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const texteOriginal = str(formData, "texteOriginal");
   const texteSMART = str(formData, "texteSMART");
   if (!texteOriginal || !texteSMART) return { error: "Merci de renseigner les deux champs." };
@@ -322,6 +328,7 @@ export async function suggererObjectifSMARTAction(
   _prev: SuggestionObjectifState,
   formData: FormData
 ): Promise<SuggestionObjectifState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -356,6 +363,7 @@ export async function suggererPlanningAction(
   _prev: SuggestionPlanningState,
   formData: FormData
 ): Promise<SuggestionPlanningState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -380,6 +388,7 @@ export async function creerSeancesPlanifieesAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const seancesRaw = str(formData, "seancesJson");
   if (!seancesRaw) return { error: "Rien à créer." };
 
@@ -433,6 +442,7 @@ export async function creerSeancesPlanifieesAction(
 }
 
 export async function addIPAQ(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const params = {
     marcheJours: num(formData, "marcheJours") ?? 0,
     marcheMinutes: num(formData, "marcheMinutes") ?? 0,
@@ -458,6 +468,7 @@ export async function addIPAQ(patientId: string, _prev: ActionState, formData: F
 }
 
 export async function addBilanNutrition(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const poidsKg = num(formData, "poids");
   const tailleCm = num(formData, "taille");
   const age = num(formData, "age");
@@ -495,6 +506,7 @@ export async function updateBilanNutrition(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const poidsKg = num(formData, "poids");
   const tailleCm = num(formData, "taille");
   const age = num(formData, "age");
@@ -532,6 +544,109 @@ export async function deleteBilanNutrition(bilanId: string, patientId: string) {
   if (!existant || existant.patientId !== patientId) return;
   await prisma.bilanNutritionnel.delete({ where: { id: bilanId } });
   revalidatePath(`/patients/${patientId}`);
+}
+
+export interface ProgrammeNutritionState {
+  error?: string;
+  success?: string;
+  programme?: string;
+}
+
+/**
+ * Génère un brouillon de programme nutrition à partir du dernier bilan et de la formule choisie
+ * (contrat, sinon devis le plus récent). Rien n'est enregistré ici — le coach relit, modifie ou
+ * redemande une génération, puis valide explicitement avec enregistrerProgrammeNutritionnelAction.
+ */
+export async function genererProgrammeNutritionnelAction(
+  patientId: string,
+  _prev: ProgrammeNutritionState,
+  _formData: FormData
+): Promise<ProgrammeNutritionState> {
+  await requireCoachSession();
+  if (!assistantIADisponible()) {
+    return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
+  }
+
+  const bilan = await prisma.bilanNutritionnel.findFirst({ where: { patientId }, orderBy: { date: "desc" } });
+  if (!bilan) return { error: "Fais d'abord un bilan nutritionnel pour ce patient avant de générer un programme." };
+
+  const [contrat, devis] = await Promise.all([
+    prisma.contrat.findFirst({ where: { patientId }, orderBy: { dateDebut: "desc" } }),
+    prisma.devis.findFirst({ where: { patientId }, orderBy: { createdAt: "desc" } }),
+  ]);
+  const formule =
+    contrat?.descriptionFormule ??
+    contrat?.formule ??
+    (devis ? `Devis ${devis.numero} — ${devis.total} €, lignes : ${devis.lignes}` : "Aucune formule enregistrée pour ce patient.");
+
+  const bilanTexte = `IMC ${bilan.imc.toFixed(1)} (${bilan.classificationIMC}), apport calorique cible ${Math.round(bilan.apportCalorique)} kcal/j, objectif pondéral : ${bilan.objectifPonderal}, protéines ${Math.round(bilan.apportProteines)} g, lipides ${Math.round(bilan.apportLipides)} g, glucides ${Math.round(bilan.apportGlucides)} g.`;
+
+  try {
+    const patientContext = await buildPatientContext(patientId);
+    const programme = await genererProgrammeNutritionnel({ patientContext, formule, bilan: bilanTexte });
+    return { programme };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
+  }
+}
+
+/**
+ * Enregistre le programme (brouillon relu/modifié par le coach). Avec `envoyer=1`, le valide ET le
+ * livre immédiatement : email au patient + visible dans son espace. Sans email patient enregistré,
+ * refuse l'envoi plutôt que de livrer silencieusement nulle part.
+ */
+export async function enregistrerProgrammeNutritionnelAction(
+  patientId: string,
+  _prev: ProgrammeNutritionState,
+  formData: FormData
+): Promise<ProgrammeNutritionState> {
+  await requireCoachSession();
+  const contenu = str(formData, "contenu");
+  if (!contenu) return { error: "Rien à enregistrer." };
+  const envoyer = str(formData, "envoyer") === "1";
+
+  const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { email: true, prenom: true } });
+  if (!patient) return { error: "Patient introuvable." };
+  if (envoyer && !patient.email) {
+    return { error: "Ce patient n'a pas d'email enregistré — impossible de lui livrer le programme par ce canal." };
+  }
+
+  await prisma.programmeNutritionnel.upsert({
+    where: { patientId },
+    create: {
+      patientId,
+      contenu,
+      genereParIA: true,
+      statut: envoyer ? "Livré" : "Validé",
+      valideLe: new Date(),
+      livreLe: envoyer ? new Date() : null,
+    },
+    update: {
+      contenu,
+      genereParIA: true,
+      statut: envoyer ? "Livré" : "Validé",
+      valideLe: new Date(),
+      ...(envoyer ? { livreLe: new Date() } : {}),
+    },
+  });
+
+  if (envoyer && emailDisponible()) {
+    try {
+      await envoyerNotificationPatient({
+        destinataire: patient.email!,
+        nomPatient: patient.prenom,
+        sujet: "Ton programme nutrition personnalisé",
+        texte: `Voici ton programme nutrition personnalisé :\n\n${contenu}\n\nTu peux aussi le retrouver à tout moment dans ton espace personnel.`,
+      });
+    } catch (e) {
+      console.error("Échec de l'envoi du programme nutrition par email:", e);
+      return { error: "Le programme est enregistré, mais l'email n'a pas pu être envoyé. Réessaie l'envoi." };
+    }
+  }
+
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/portail/nutrition");
+  return { success: envoyer ? "Programme validé et envoyé au patient." : "Programme enregistré comme brouillon." };
 }
 
 export async function addSeance(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -638,6 +753,7 @@ export async function reprogrammerSeanceAction(
   _prev: ReprogrammerState,
   formData: FormData
 ): Promise<ReprogrammerState> {
+  await requireCoachSession();
   const nouvelleDate = parseDatetimeLocalParis(str(formData, "date"));
   if (!nouvelleDate) return { error: "Choisis une date et une heure." };
 
@@ -658,6 +774,7 @@ export async function confirmerReprogrammationExceptionnelleAction(
   _prev: ReprogrammerState,
   formData: FormData
 ): Promise<ReprogrammerState> {
+  await requireCoachSession();
   const dateISO = str(formData, "dateISO");
   if (!dateISO) return { error: "Date manquante." };
   const nouvelleDate = new Date(dateISO);
@@ -708,6 +825,7 @@ export async function suggererMessageAttentionAction(
   _prev: SuggestionMessageState,
   _formData: FormData
 ): Promise<SuggestionMessageState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -738,6 +856,7 @@ export async function suggererMessageRelanceJournalAction(
   _prev: SuggestionMessageRelanceState,
   _formData: FormData
 ): Promise<SuggestionMessageRelanceState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -769,6 +888,7 @@ export async function envoyerMessageAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireCoachSession();
   const contenu = str(formData, "contenu");
   if (!contenu) return { error: "Le message est vide." };
 
@@ -789,6 +909,7 @@ export async function analyserSuiviAction(
   _prev: AnalyseSuiviState,
   _formData: FormData
 ): Promise<AnalyseSuiviState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }

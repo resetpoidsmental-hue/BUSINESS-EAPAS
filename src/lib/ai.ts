@@ -738,6 +738,44 @@ export async function genererObservationsBilan({
   });
 }
 
+const PROGRAMME_NUTRITIONNEL_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
+coach nutrition indépendant. Il vient de valider la formule choisie par un patient nutrition et te demande de
+rédiger un BROUILLON de programme nutritionnel personnalisé, à partir de son bilan et de son profil.
+
+Règles impératives, toujours respectées :
+- C'est un BROUILLON : le coach le relira, pourra le modifier ou en redemander un autre, et décide seul de le
+  valider et de l'envoyer au patient.
+- Appuie-toi uniquement sur le profil et le bilan fournis — n'invente aucune donnée médicale ni aucun chiffre qui
+  n'y figure pas.
+- Tu ne poses aucun diagnostic médical et ne remplaces pas un avis médical : en cas de pathologie ou de restriction
+  signalée, reste prudent et recommande d'en parler au coach ou à un médecin plutôt que de trancher toi-même.
+- Structure le programme avec des titres Markdown (##) : objectifs, grandes lignes de l'alimentation, rythme de
+  suivi proposé, conseils clés — reste concret et actionnable, sans jargon technique.
+- Ton chaleureux et motivant, mais factuel : aucune promesse de résultat chiffré qui ne soit pas fondée sur le
+  bilan fourni.
+- Réponds UNIQUEMENT avec le texte du programme en Markdown, rien d'autre autour.`;
+
+export interface GenererProgrammeNutritionnelParams {
+  /** Contexte patient déjà anonymisé (pas de nom, pas de coordonnées) assemblé par l'appelant. */
+  patientContext: string;
+  /** Formule/offre choisie par le patient (nom, inclusions, tarif…), déjà formatée en texte. */
+  formule: string;
+  /** Dernier bilan nutritionnel, déjà formaté en texte. */
+  bilan: string;
+}
+
+export async function genererProgrammeNutritionnel({
+  patientContext,
+  formule,
+  bilan,
+}: GenererProgrammeNutritionnelParams): Promise<string> {
+  return appelerClaudeTexte({
+    system: PROGRAMME_NUTRITIONNEL_SYSTEM_PROMPT,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nFormule choisie :\n${formule}\n\nDernier bilan nutritionnel :\n${bilan}\n\nRédige le programme.`,
+    maxTokens: 2000,
+  });
+}
+
 const REPONSE_SAV_SYSTEM_PROMPT = `Tu es l'assistant d'un Enseignant en Activité Physique Adaptée et Santé (EAPAS) /
 coach nutrition indépendant. Tu rédiges un brouillon de réponse à une demande ou réclamation qu'un patient lui a
 adressée (ticket SAV), pour qu'il la relise avant de l'envoyer.

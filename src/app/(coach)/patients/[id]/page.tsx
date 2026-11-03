@@ -48,6 +48,7 @@ export default async function PatientDetailPage({
       },
       journalEntrees: { orderBy: { date: "desc" }, take: 30 },
       modelesRation: { orderBy: { updatedAt: "desc" } },
+      programmeNutritionnel: true,
       patientAccess: true,
     },
   });
@@ -175,6 +176,9 @@ export default async function PatientDetailPage({
               updatedAt: m.updatedAt,
             }))}
             modelesBibliotheque={modelesBibliotheque}
+            programme={patient.programmeNutritionnel}
+            iaDisponible={assistantIADisponible()}
+            patientADesEmail={Boolean(patient.email)}
           />
         </TabsContent>
 
