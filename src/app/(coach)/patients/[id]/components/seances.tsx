@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addSeance, updateSeanceStatut, deleteSeance, type ActionState } from "../../actions";
+import { addSeance, updateSeanceStatut, deleteSeance, updateSeanceLienVisio, type ActionState } from "../../actions";
 import { genererFicheSeanceAction, validerFicheSeanceAction, type GenererState, type ValiderState } from "../../../assistant/actions";
 import { ReprogrammerSeance } from "@/components/reprogrammer-seance";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,47 @@ import { Badge } from "@/components/ui/badge";
 import { FicheSeanceCard } from "@/components/fiche-seance-card";
 import { parseFicheSeance, ficheSeanceToText, type FicheSeance } from "@/lib/fiche-seance";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, Sparkles, Target, Trash2 } from "lucide-react";
+import { CalendarDays, Sparkles, Target, Trash2, Video } from "lucide-react";
 
 const initialState: ActionState = {};
 const initGenState: GenererState = {};
 const initValState: ValiderState = {};
+const initLienState: ActionState = {};
+
+function LienVisioField({ patientId, seanceId, lienVisio }: { patientId: string; seanceId: string; lienVisio: string | null }) {
+  const action = updateSeanceLienVisio.bind(null, seanceId, patientId);
+  const [state, formAction, pending] = useActionState(action, initLienState);
+  const [valeur, setValeur] = useState(lienVisio ?? "");
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-[var(--radius-sm)] bg-surface-muted p-3">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <Video className="h-3.5 w-3.5 text-primary" />
+        Lien visio
+      </div>
+      <form action={formAction} className="flex flex-wrap items-center gap-2">
+        <Input
+          name="lienVisio"
+          value={valeur}
+          onChange={(e) => setValeur(e.target.value)}
+          placeholder="https://meet.google.com/…"
+          className="min-w-[220px] flex-1"
+        />
+        <Button type="submit" size="sm" variant="outline" disabled={pending}>
+          {pending ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+      </form>
+      {lienVisio && (
+        <a href={lienVisio} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+          Ouvrir la visio
+        </a>
+      )}
+      {state.success && <p className="text-xs text-success">{state.success}</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      <p className="text-xs text-muted">Envoyé automatiquement au patient par email, 1h et 15 min avant la séance.</p>
+    </div>
+  );
+}
 
 interface SeanceItem {
   id: string;
@@ -30,6 +66,7 @@ interface SeanceItem {
   materielNecessaire: string | null;
   borgRessenti: number | null;
   notes: string | null;
+  lienVisio: string | null;
   objectifSMART: { id: string; texteSMART: string } | null;
 }
 
@@ -142,6 +179,10 @@ function SeanceCard({ patientId, seance }: { patientId: string; seance: SeanceIt
 
         <ReprogrammerSeance seanceId={seance.id} patientId={patientId} />
 
+        {seance.format === "Distance" && (
+          <LienVisioField patientId={patientId} seanceId={seance.id} lienVisio={seance.lienVisio} />
+        )}
+
         {ficheExistante ? (
           <FicheSeanceCard fiche={ficheExistante} />
         ) : (
@@ -213,6 +254,7 @@ function SeanceCard({ patientId, seance }: { patientId: string; seance: SeanceIt
 export function SeancesSection({ patientId, seances }: { patientId: string; seances: SeanceItem[] }) {
   const action = addSeance.bind(null, patientId);
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [format, setFormat] = useState("Individuel");
 
   return (
     <div className="flex flex-col gap-6">
@@ -231,13 +273,25 @@ export function SeancesSection({ patientId, seances }: { patientId: string; sean
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="format">Format</Label>
-                <select id="format" name="format" className="h-10 rounded-[var(--radius-sm)] border border-border bg-surface px-3 text-sm">
+                <select
+                  id="format"
+                  name="format"
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                  className="h-10 rounded-[var(--radius-sm)] border border-border bg-surface px-3 text-sm"
+                >
                   <option value="Individuel">Individuel</option>
                   <option value="Collectif">Collectif</option>
                   <option value="Distance">À distance</option>
                 </select>
               </div>
             </div>
+            {format === "Distance" && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lienVisio">Lien visio (envoyé au patient par email 1h et 15 min avant)</Label>
+                <Input id="lienVisio" name="lienVisio" placeholder="https://meet.google.com/…" />
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="contenu">Contenu & exercices (APA / Nutrition)</Label>
               <Textarea id="contenu" name="contenu" rows={2} placeholder="Renforcement membres inf. (chaise, squats guidés)…" />

@@ -192,6 +192,9 @@ model Seance {
   borgRessenti        Int?
   notes               String?
   rappel2hEnvoye      Boolean        @default(false)
+  lienVisio              String?
+  rappelVisio1hEnvoye    Boolean        @default(false)
+  rappelVisio15minEnvoye Boolean        @default(false)
 }
 
 model Abonnement {

@@ -88,7 +88,18 @@ export default async function PortailDashboard() {
             <div className="flex flex-col divide-y divide-border">
               {patient.seances.map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-2 text-sm">
-                  <span>{s.type ?? "Séance"} {s.format && `· ${s.format}`}</span>
+                  <span>
+                    {s.type ?? "Séance"} {s.format && `· ${s.format}`}
+                    {s.format === "Distance" && s.lienVisio && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        <a href={s.lienVisio} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          Rejoindre la visio
+                        </a>
+                      </>
+                    )}
+                  </span>
                   <span className="text-muted">{formatDateTime(s.date)}</span>
                 </div>
               ))}

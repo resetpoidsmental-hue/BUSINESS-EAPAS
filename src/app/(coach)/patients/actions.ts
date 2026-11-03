@@ -535,24 +535,42 @@ export async function deleteBilanNutrition(bilanId: string, patientId: string) {
 }
 
 export async function addSeance(patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const dateSeance = parseDatetimeLocalParis(str(formData, "date"));
   if (!dateSeance) return { error: "La date est obligatoire." };
 
+  const format = str(formData, "format");
   await prisma.seance.create({
     data: {
       patientId,
       date: dateSeance,
       type: str(formData, "type"),
-      format: str(formData, "format"),
+      format,
       statut: str(formData, "statut") ?? "Planifiée",
       contenu: str(formData, "contenu"),
       borgRessenti: num(formData, "borgRessenti"),
       notes: str(formData, "notes"),
+      lienVisio: format === "Distance" ? str(formData, "lienVisio") : null,
     },
   });
 
   revalidatePath(`/patients/${patientId}`);
   return { success: "Séance ajoutée." };
+}
+
+export async function updateSeanceLienVisio(seanceId: string, patientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
+  const existante = await prisma.seance.findUnique({ where: { id: seanceId } });
+  if (!existante || existante.patientId !== patientId) return { error: "Séance introuvable." };
+
+  const lienVisio = str(formData, "lienVisio");
+  await prisma.seance.update({
+    where: { id: seanceId },
+    data: { lienVisio, rappelVisio1hEnvoye: false, rappelVisio15minEnvoye: false },
+  });
+
+  revalidatePath(`/patients/${patientId}`);
+  return { success: "Lien visio enregistré." };
 }
 
 export async function updateSeanceStatut(seanceId: string, patientId: string, statut: string) {

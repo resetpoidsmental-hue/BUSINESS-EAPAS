@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { telegramDisponible, envoyerMessageTelegram, type TelegramBouton } from "@/lib/telegram";
 import { verifierDisponibilite } from "@/lib/disponibilite";
+import { envoyerNotificationPatient, emailDisponible } from "@/lib/email";
 import { formatHeure } from "@/lib/utils";
 import { ajouterJours, parisHeureVersDate, type JourCalendaire } from "@/lib/agenda";
 
@@ -114,4 +115,60 @@ export async function envoyerRappels2h() {
       console.error("Échec du rappel Telegram 2h:", e);
     }
   }
+}
+
+type SeanceAVisio = {
+  id: string;
+  lienVisio: string | null;
+  patient: { prenom: string; email: string | null };
+};
+
+async function seancesVisioAEnvoyer(delaiMinCible: number, margeMin: number, champFlag: "rappelVisio1hEnvoye" | "rappelVisio15minEnvoye") {
+  const maintenant = new Date();
+  const borneBasse = new Date(maintenant.getTime() + (delaiMinCible - margeMin) * 60 * 1000);
+  const borneHaute = new Date(maintenant.getTime() + (delaiMinCible + margeMin) * 60 * 1000);
+
+  return prisma.seance.findMany({
+    where: {
+      date: { gte: borneBasse, lt: borneHaute },
+      statut: "Planifiée",
+      format: "Distance",
+      lienVisio: { not: null },
+      [champFlag]: false,
+    },
+    include: { patient: { select: { prenom: true, email: true } } },
+  });
+}
+
+async function envoyerRappelsVisio(seances: SeanceAVisio[], champFlag: "rappelVisio1hEnvoye" | "rappelVisio15minEnvoye", delaiTexte: string) {
+  for (const s of seances) {
+    // Rien à envoyer sans email patient — on ne marque le rappel "envoyé" que si l'email part réellement,
+    // pour ne pas perdre silencieusement le rappel si l'email est renseigné plus tard hors de la fenêtre.
+    if (!s.patient.email || !s.lienVisio) continue;
+    try {
+      await envoyerNotificationPatient({
+        destinataire: s.patient.email,
+        nomPatient: s.patient.prenom,
+        sujet: `Ta séance visio commence ${delaiTexte}`,
+        texte: `Ta séance en visio commence ${delaiTexte}. Voici le lien pour nous rejoindre :\n\n${s.lienVisio}`,
+      });
+      await prisma.seance.update({ where: { id: s.id }, data: { [champFlag]: true } });
+    } catch (e) {
+      console.error(`Échec du rappel visio (${delaiTexte}):`, e);
+    }
+  }
+}
+
+/** Rappel par email du lien visio, 1h avant une séance à distance. */
+export async function envoyerRappelsVisio1h() {
+  if (!emailDisponible()) return;
+  const seances = await seancesVisioAEnvoyer(60, 10, "rappelVisio1hEnvoye");
+  await envoyerRappelsVisio(seances, "rappelVisio1hEnvoye", "dans 1h");
+}
+
+/** Rappel par email du lien visio, 15 min avant une séance à distance. */
+export async function envoyerRappelsVisio15min() {
+  if (!emailDisponible()) return;
+  const seances = await seancesVisioAEnvoyer(15, 5, "rappelVisio15minEnvoye");
+  await envoyerRappelsVisio(seances, "rappelVisio15minEnvoye", "dans 15 min");
 }

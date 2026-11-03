@@ -318,8 +318,15 @@ Ajoute :
 45 20 * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=veille"
 45 7 * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=matin"
 */15 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappel2h"
+*/10 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappelVisio1h"
+*/10 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappelVisio15min"
 7 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=relanceProspects"
 ```
+
+Les deux derniers envoient par **email** au patient (pas par Telegram) le
+lien visio renseigné sur une séance « À distance », 1h puis 15 min avant —
+rien n'est envoyé si la séance n'a pas de lien ou si le patient n'a pas
+d'email enregistré.
 
 Le dernier (`relanceProspects`) propose, une fois par heure, un brouillon de
 relance par email pour chaque prospect encore "Nouveau" 24h après sa
