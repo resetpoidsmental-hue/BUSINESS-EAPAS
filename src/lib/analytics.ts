@@ -111,12 +111,31 @@ export interface AnalytiqueResultat {
     assiduite: { tauxPct: number | null; ressentiMoyen: number | null; journalRempliCount: number; journalRempliTotal: number };
     nutrition: { suivisCount: number; suivisTotal: number; deltaPoidsMoyen: number | null; respectRationMoyenPct: number | null };
     objectifs: { atteints: number; total: number; tauxPct: number | null; deltaTugMoyen: number | null };
-    commercial: { caEncaisse: number; impayesMontant: number; impayesCount: number; devisEnCoursMontant: number; devisEnCoursCount: number };
+    commercial: {
+      caEncaisse: number;
+      depensesMontant: number;
+      beneficeBrut: number;
+      impayesMontant: number;
+      impayesCount: number;
+      devisEnCoursMontant: number;
+      devisEnCoursCount: number;
+    };
   };
 }
 
-export function calculerAnalytique(periode: PeriodeKey, now: Date, patients: PatientAnalyticsInput[]): AnalytiqueResultat {
+export interface DepenseAnalyticsInput {
+  date: Date;
+  montant: number;
+}
+
+export function calculerAnalytique(
+  periode: PeriodeKey,
+  now: Date,
+  patients: PatientAnalyticsInput[],
+  depenses: DepenseAnalyticsInput[] = []
+): AnalytiqueResultat {
   const start = periodeDebut(periode, now);
+  const depensesMontant = depenses.filter((d) => dansPeriode(d.date, start, now)).reduce((s, d) => s + d.montant, 0);
 
   let ressentisPool: number[] = [];
   let faitesTotal = 0;
@@ -244,6 +263,8 @@ export function calculerAnalytique(periode: PeriodeKey, now: Date, patients: Pat
       },
       commercial: {
         caEncaisse,
+        depensesMontant,
+        beneficeBrut: caEncaisse - depensesMontant,
         impayesMontant: impayesMontantTotal,
         impayesCount: impayesCountTotal,
         devisEnCoursMontant,

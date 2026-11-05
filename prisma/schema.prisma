@@ -32,6 +32,18 @@ model Settings {
   updatedAt      DateTime @updatedAt
 }
 
+/** Dépense professionnelle — visibilité du bénéfice réel, pas un outil de déclaration fiscale. */
+model Depense {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  categorie String
+  libelle   String
+  montant   Float
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Patient {
   id                  String   @id @default(cuid())
   numDossier          String   @unique

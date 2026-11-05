@@ -159,8 +159,10 @@ export function AnalytiqueView({ resultats }: { resultats: Record<PeriodeKey, An
               <Landmark className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-semibold">Activité commerciale</h2>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Stat label="CA encaissé" value={formatCurrency(cohortes.commercial.caEncaisse)} />
+              <Stat label="Dépenses" value={formatCurrency(cohortes.commercial.depensesMontant)} />
+              <Stat label="Bénéfice brut" value={formatCurrency(cohortes.commercial.beneficeBrut)} />
               <Stat label="Factures impayées" value={formatCurrency(cohortes.commercial.impayesMontant)} />
               <Stat
                 label="Devis en cours"
@@ -168,7 +170,9 @@ export function AnalytiqueView({ resultats }: { resultats: Record<PeriodeKey, An
               />
             </div>
             <p className="text-xs text-muted">
-              Sur la période sélectionnée — factures payées (date de paiement), devis au statut « Envoyé ».
+              Sur la période sélectionnée — factures payées (date de paiement), devis au statut « Envoyé », dépenses
+              saisies dans l&apos;onglet Administratif. Bénéfice brut = CA − dépenses, hors cotisations URSSAF (voir
+              le Livre de comptes pour l&apos;estimation nette mensuelle).
             </p>
           </CardContent>
         </Card>

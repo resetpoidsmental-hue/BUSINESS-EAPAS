@@ -118,6 +118,7 @@ export async function sauvegarderMaintenantAction(): Promise<SauvegardeActionSta
 /** Marquée une fois la visite guidée terminée ou passée — fait disparaître l'item de la checklist
  * de démarrage. Peut être relancée à tout moment depuis Réglages sans que ça la "démarque". */
 export async function marquerVisiteGuideeFaiteAction() {
+  await requireCoachSession();
   await prisma.settings.upsert({
     where: { id: 1 },
     update: { visiteGuideeFaite: true },

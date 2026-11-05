@@ -7,10 +7,11 @@ import { FactureSection } from "./components/facture-section";
 import { AbonnementsSection } from "./components/abonnements-section";
 import { PrelevementsSection } from "./components/prelevements-section";
 import { LivreDeComptes } from "./components/livre-comptes";
+import { DepensesSection } from "./components/depenses-section";
 import { ModelesMessages } from "./components/modeles-messages";
 
 export default async function AdministratifPage() {
-  const [patients, devis, contrats, factures, abonnements, settings, prestations, prelevements] = await Promise.all([
+  const [patients, devis, contrats, factures, abonnements, settings, prestations, prelevements, depenses] = await Promise.all([
     prisma.patient.findMany({ select: { id: true, nom: true, prenom: true }, orderBy: { nom: "asc" } }),
     prisma.devis.findMany({ include: { patient: { select: { nom: true, prenom: true } } }, orderBy: { date: "desc" } }),
     prisma.contrat.findMany({ include: { patient: { select: { nom: true, prenom: true } } }, orderBy: { dateDebut: "desc" } }),
@@ -26,6 +27,7 @@ export default async function AdministratifPage() {
       include: { patient: { select: { nom: true, prenom: true } }, abonnement: { select: { formule: true } } },
       orderBy: { date: "desc" },
     }),
+    prisma.depense.findMany({ orderBy: { date: "desc" } }),
   ]);
 
   const facturesPayees = factures.filter((f) => f.statut === "Payée");
@@ -41,6 +43,7 @@ export default async function AdministratifPage() {
           <TabsTrigger value="contrats">Contrats</TabsTrigger>
           <TabsTrigger value="abonnements">Abonnements</TabsTrigger>
           <TabsTrigger value="prelevements">Prélèvements</TabsTrigger>
+          <TabsTrigger value="depenses">Dépenses</TabsTrigger>
           <TabsTrigger value="comptes">Livre de comptes</TabsTrigger>
           <TabsTrigger value="modeles">Modèles</TabsTrigger>
         </TabsList>
@@ -60,8 +63,11 @@ export default async function AdministratifPage() {
         <TabsContent value="prelevements">
           <PrelevementsSection prelevements={prelevements} />
         </TabsContent>
+        <TabsContent value="depenses">
+          <DepensesSection depenses={depenses} />
+        </TabsContent>
         <TabsContent value="comptes">
-          <LivreDeComptes factures={facturesPayees} tauxUrssaf={settings.tauxUrssaf} />
+          <LivreDeComptes factures={facturesPayees} depenses={depenses} tauxUrssaf={settings.tauxUrssaf} />
         </TabsContent>
         <TabsContent value="modeles">
           <ModelesMessages nomEntreprise={settings.nomEntreprise} />

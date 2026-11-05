@@ -23,6 +23,7 @@ export async function genererConditionsAnnulationAction(
   _prev: ConditionsAnnulationState,
   formData: FormData
 ): Promise<ConditionsAnnulationState> {
+  await requireCoachSession();
   if (!assistantIADisponible()) {
     return { error: "L'assistant IA n'est pas configuré (clé API manquante)." };
   }
@@ -84,6 +85,7 @@ function totalLignes(lignes: LigneInput[]) {
 
 
 export async function createDevis(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const patientId = str(formData, "patientId");
   if (!patientId) return { error: "Sélectionne un patient ou client." };
   const lignes = parseLignes(formData);
@@ -105,6 +107,7 @@ export async function createDevis(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function createContrat(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const patientId = str(formData, "patientId");
   if (!patientId) return { error: "Sélectionne un patient ou client." };
 
@@ -129,6 +132,7 @@ export async function createContrat(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function createFacture(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
   const patientId = str(formData, "patientId");
   if (!patientId) return { error: "Sélectionne un patient ou client." };
   const lignes = parseLignes(formData);
@@ -304,5 +308,46 @@ export async function marquerPrelevementRegleManuellementAction(prelevementId: s
     data: { dateDernierPaiement: new Date(), prochainPaiement: prochain, statutPaiement: "À jour" },
   });
 
+  revalidatePath("/administratif");
+}
+
+export const CATEGORIES_DEPENSE = [
+  "Assurance professionnelle",
+  "Matériel / équipement",
+  "Déplacements",
+  "Logiciels / abonnements",
+  "Formation",
+  "Communication / marketing",
+  "Frais bancaires",
+  "Autre",
+];
+
+export async function createDepense(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireCoachSession();
+  const categorie = str(formData, "categorie");
+  const libelle = str(formData, "libelle");
+  const montant = num(formData, "montant");
+  const dateStr = str(formData, "date");
+  if (!categorie) return { error: "Choisis une catégorie." };
+  if (!libelle) return { error: "Donne un libellé à cette dépense." };
+  if (montant === null || montant <= 0) return { error: "Indique un montant valide." };
+
+  await prisma.depense.create({
+    data: {
+      categorie,
+      libelle,
+      montant,
+      date: dateStr ? new Date(dateStr) : new Date(),
+      notes: str(formData, "notes"),
+    },
+  });
+
+  revalidatePath("/administratif");
+  return { success: "Dépense enregistrée." };
+}
+
+export async function deleteDepense(depenseId: string) {
+  await requireCoachSession();
+  await prisma.depense.delete({ where: { id: depenseId } });
   revalidatePath("/administratif");
 }

@@ -7,6 +7,8 @@ import { AnalytiqueView } from "./analytique-view";
 const PERIODES: PeriodeKey[] = ["semaine", "mois", "tout"];
 
 export default async function AnalytiquePage() {
+  const depenses = await prisma.depense.findMany({ select: { date: true, montant: true } });
+
   const patients = await prisma.patient.findMany({
     orderBy: { nom: "asc" },
     include: {
@@ -36,7 +38,9 @@ export default async function AnalytiquePage() {
   }));
 
   const now = new Date();
-  const resultats = Object.fromEntries(PERIODES.map((periode) => [periode, calculerAnalytique(periode, now, input)])) as Record<
+  const resultats = Object.fromEntries(
+    PERIODES.map((periode) => [periode, calculerAnalytique(periode, now, input, depenses)])
+  ) as Record<
     PeriodeKey,
     ReturnType<typeof calculerAnalytique>
   >;
