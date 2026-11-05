@@ -286,6 +286,7 @@ export function ObjectifsSection({ patientId, objectifs }: { patientId: string; 
                 onClick={() => {
                   const fd = new FormData();
                   fd.set("texteOriginal", texteOriginal);
+                  if (dateCible) fd.set("dateCible", dateCible);
                   suggestFormAction(fd);
                 }}
               >
@@ -346,6 +347,9 @@ export function ObjectifsSection({ patientId, objectifs }: { patientId: string; 
                 value={dateCible}
                 onChange={(e) => setDateCible(e.target.value)}
               />
+              <p className="text-xs text-muted">
+                Si le patient t&rsquo;a donné une date précise, mets-la ici avant de demander la suggestion IA — elle sera respectée.
+              </p>
             </div>
             {state.error && <p className="text-sm text-danger">{state.error}</p>}
             {state.success && <p className="text-sm text-success">{state.success}</p>}

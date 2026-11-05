@@ -183,9 +183,17 @@ Règles impératives, toujours respectées :
   explicite du coach.
 - Reste fidèle à l'intention du patient : ne change pas la nature de son objectif, rends-le seulement concret,
   mesurable et borné dans le temps.
-- Adapte l'ambition et l'échéance au profil fourni (âge, limitations, pathologie, dernier bilan clinique s'il
-  existe). Si aucun bilan clinique n'est disponible, reste particulièrement prudent dans l'échéance proposée
-  (plutôt plus longue que trop courte) et dans l'intensité implicite de l'objectif.
+- Échéance : si une échéance déjà saisie par le coach t'est donnée, OU si le patient a mentionné une date précise
+  dans son objectif en entretien initial ou dans son texte — utilise-la TOUJOURS comme "dateCible", sans la
+  changer, sauf si elle est manifestement dangereuse ou irréaliste au vu du profil (dans ce seul cas, choisis une
+  échéance plus prudente). N'invente jamais une échéance différente de celle exprimée par le patient quand il y
+  en a une.
+- Si aucune échéance n'est donnée nulle part, calcule une échéance réaliste toi-même, adaptée à l'ambition de
+  l'objectif et au profil fourni (âge, limitations, pathologie, dernier bilan clinique ou nutritionnel s'il
+  existe). Si aucun bilan n'est disponible, reste particulièrement prudent (plutôt plus longue que trop courte).
+- Appuie-toi sur l'objectif exprimé en entretien initial, le déclencheur de la démarche et les attentes du
+  patient quand ils figurent dans le profil fourni, pour que la formulation SMART reste cohérente avec ce qui a
+  été dit à l'accueil — pas seulement avec le texte tapé maintenant.
 - Sois concis : "texteSMART" tient en UNE seule phrase courte (15-20 mots maximum), sans énumération ni
   sous-critères entre parenthèses. Garde uniquement l'essentiel : l'action concrète, la mesure/quantité, et
   l'échéance — pas de justification ni de détail du contexte dans le texte lui-même.
@@ -195,7 +203,7 @@ Règles impératives, toujours respectées :
 
 const OBJECTIF_SCHEMA = `{
   "texteSMART": string (UNE phrase courte, 15-20 mots max, ex: "Perdre 6 kg d'ici le 29 mars 2027, par une activité physique régulière"),
-  "dateCible": string (format AAAA-MM-JJ, échéance réaliste calculée à partir de la date du jour donnée)
+  "dateCible": string (format AAAA-MM-JJ — reprend l'échéance déjà donnée si elle existe, sinon une échéance réaliste calculée à partir de la date du jour)
 }`;
 
 export interface GenererObjectifSMARTParams {
@@ -203,6 +211,8 @@ export interface GenererObjectifSMARTParams {
   patientContext: string;
   /** Objectif du patient, dans ses propres mots. */
   texteOriginal: string;
+  /** Échéance déjà saisie par le coach dans le formulaire (AAAA-MM-JJ), ou null si aucune. */
+  echeanceExistante: string | null;
 }
 
 export interface ObjectifSMARTSuggestion {
@@ -234,12 +244,13 @@ function parseObjectifSuggestion(parsed: unknown): ObjectifSMARTSuggestion {
 export async function genererObjectifSMART({
   patientContext,
   texteOriginal,
+  echeanceExistante,
 }: GenererObjectifSMARTParams): Promise<ObjectifSMARTSuggestion> {
   const aujourdhui = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
 
   const parsed = await appelerClaudeJSON({
     system: OBJECTIF_SYSTEM_PROMPT,
-    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nDate du jour : ${aujourdhui}\n\nObjectif du patient, dans ses mots : « ${texteOriginal} »\n\nSchéma JSON attendu :\n${OBJECTIF_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nDate du jour : ${aujourdhui}\n\nObjectif du patient, dans ses mots : « ${texteOriginal} »\n\n${echeanceExistante ? `Échéance déjà saisie par le coach : ${echeanceExistante} — à respecter sauf si manifestement dangereuse ou irréaliste.` : "Aucune échéance déjà saisie — calcule-la toi-même si le patient n'en a mentionné aucune."}\n\nSchéma JSON attendu :\n${OBJECTIF_SCHEMA}\n\nRéponds uniquement avec le JSON, sans aucun texte autour.`,
     maxTokens: 2000,
   });
 

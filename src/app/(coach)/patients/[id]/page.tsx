@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { assistantIADisponible } from "@/lib/ai";
 import { Badge } from "@/components/ui/badge";
+import { PoleBadge } from "@/components/pole-badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDate, ageFromDate, initials } from "@/lib/utils";
 import { EntretienForm } from "./components/entretien-form";
@@ -89,7 +90,7 @@ export default async function PatientDetailPage({
         </div>
         <div className="ml-auto flex flex-wrap gap-1.5">
           <Badge>{patient.statutSuivi}</Badge>
-          <Badge variant="outline">{patient.metier}</Badge>
+          <PoleBadge metier={patient.metier} />
           {!patient.consentementRGPD && <Badge variant="warning">Consentement RGPD manquant</Badge>}
         </div>
       </div>
@@ -141,7 +142,7 @@ export default async function PatientDetailPage({
                 ci-dessous (ex. relance à distance).
               </p>
             )}
-            <EntretienForm patientId={patient.id} />
+            <EntretienForm patientId={patient.id} metier={patient.metier} />
           </div>
         </TabsContent>
 

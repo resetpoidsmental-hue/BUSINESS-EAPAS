@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatDate, ageFromDate, initials } from "@/lib/utils";
+import { PoleBadge, POLE_STYLE } from "@/components/pole-badge";
 
 const STATUT_VARIANT: Record<string, "muted" | "warning" | "default" | "success"> = {
   "Bilan initial à faire": "warning",
@@ -42,6 +43,9 @@ export default async function PatientsPage({
     orderBy: { createdAt: "desc" },
   });
 
+  const compteursPoles = await prisma.patient.groupBy({ by: ["metier"], _count: { _all: true } });
+  const compteurPar = (m: string) => compteursPoles.find((c) => c.metier === m)?._count._all ?? 0;
+
   const statuts = ["Bilan initial à faire", "Suivi en cours", "Bilan final fait", "Suivi terminé"];
 
   return (
@@ -57,6 +61,26 @@ export default async function PatientsPage({
           </Button>
         }
       />
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        {(["EAPAS", "Nutrition", "EAPAS+Nutrition"] as const).map((m) => {
+          const style = POLE_STYLE[m];
+          return (
+            <div
+              key={m}
+              className="flex items-center gap-2 rounded-xl px-3.5 py-2"
+              style={{ background: style.bg, border: `1px solid ${style.border}` }}
+            >
+              <span className="text-lg font-bold" style={{ color: style.text }}>
+                {compteurPar(m)}
+              </span>
+              <span className="text-xs font-semibold" style={{ color: style.text }}>
+                {m === "EAPAS+Nutrition" ? "EAPAS + Nutrition" : m}
+              </span>
+            </div>
+          );
+        })}
+      </div>
 
       <form className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center" method="get">
         <div className="relative flex-1">
@@ -127,7 +151,7 @@ export default async function PatientsPage({
                     {p.pathologieALD && <p className="line-clamp-1 text-xs text-muted">{p.pathologieALD}</p>}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Badge variant={STATUT_VARIANT[p.statutSuivi] ?? "muted"}>{p.statutSuivi}</Badge>
-                      <Badge variant="outline">{p.metier}</Badge>
+                      <PoleBadge metier={p.metier} />
                     </div>
                     <p className="text-xs text-muted">Créé le {formatDate(p.createdAt)}</p>
                   </CardContent>

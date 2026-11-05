@@ -1,13 +1,24 @@
 import { prisma } from "@/lib/db";
 import { formatRepasStructureResume } from "@/lib/categories-ration";
 
-/** Contexte patient anonymisé (pas de nom, pas de coordonnées) à fournir à l'assistant IA. */
+/**
+ * Contexte patient anonymisé (pas de nom, pas de coordonnées) à fournir à l'assistant IA. Commun à
+ * toutes les générations IA (fiche de séance, objectif SMART, planning, observations de bilan,
+ * programme nutrition…) : inclut systématiquement l'entretien initial, les bilans (clinique ET
+ * nutritionnel), l'IPAQ, les objectifs SMART déjà posés et le modèle de ration actif — chaque section
+ * n'apparaît que si la donnée existe, donc le contexte s'adapte naturellement au pôle du patient
+ * (EAPAS, Nutrition, ou les deux) sans bascule explicite.
+ */
 export async function buildPatientContext(patientId: string): Promise<string> {
   const patient = await prisma.patient.findUnique({
     where: { id: patientId },
     include: {
       entretiens: { orderBy: { date: "desc" }, take: 1 },
       bilans: { orderBy: { date: "desc" }, take: 1 },
+      bilansNutrition: { orderBy: { date: "desc" }, take: 1 },
+      ipaqEvaluations: { orderBy: { date: "desc" }, take: 1 },
+      objectifs: { orderBy: { createdAt: "desc" } },
+      modelesRation: { orderBy: { updatedAt: "desc" }, take: 1 },
       seances: { where: { statut: "Faite" }, orderBy: { date: "desc" }, take: 2 },
     },
   });
@@ -18,11 +29,27 @@ export async function buildPatientContext(patientId: string): Promise<string> {
     : null;
 
   const lignes: string[] = [];
+  lignes.push(`Pôle de suivi : ${patient.metier}`);
   lignes.push(`Âge : ${age ?? "non renseigné"}`);
   if (patient.pathologieALD) lignes.push(`Pathologie / ALD : ${patient.pathologieALD}`);
   if (patient.limitations) lignes.push(`Limitations connues : ${patient.limitations}`);
 
   const entretien = patient.entretiens[0];
+  if (entretien?.objectifPatientMots) {
+    lignes.push(`Objectif exprimé par le patient en entretien initial : ${entretien.objectifPatientMots}`);
+  }
+  if (entretien?.declencheur) {
+    lignes.push(`Déclencheur de la démarche : ${entretien.declencheur}`);
+  }
+  if (entretien?.attentesCoach) {
+    lignes.push(`Attentes vis-à-vis de l'accompagnement : ${entretien.attentesCoach}`);
+  }
+  if (entretien?.freinsPotentiels) {
+    lignes.push(`Freins potentiels identifiés : ${entretien.freinsPotentiels}`);
+  }
+  if (entretien?.gesteAPreserver) {
+    lignes.push(`Geste ou activité à préserver/retrouver : ${entretien.gesteAPreserver}`);
+  }
   if (entretien?.douleursApprehensions) {
     lignes.push(`Douleurs / appréhensions rapportées : ${entretien.douleursApprehensions}`);
   }
@@ -41,8 +68,33 @@ export async function buildPatientContext(patientId: string): Promise<string> {
     if (bilan.tugTemps && bilan.tugTemps > 12) {
       lignes.push("Attention : TUG > 12s, risque de chute accru — prudence sur l'équilibre.");
     }
-  } else {
+  } else if (patient.metier !== "Nutrition") {
     lignes.push("Aucun bilan clinique initial enregistré pour l'instant.");
+  }
+
+  const bilanNutrition = patient.bilansNutrition[0];
+  if (bilanNutrition) {
+    lignes.push(
+      `Dernier bilan nutritionnel : IMC ${bilanNutrition.imc.toFixed(1)} (${bilanNutrition.classificationIMC}), objectif pondéral : ${bilanNutrition.objectifPonderal}, apport calorique cible ${Math.round(bilanNutrition.apportCalorique)} kcal/j (protéines ${Math.round(bilanNutrition.apportProteines)}g, lipides ${Math.round(bilanNutrition.apportLipides)}g, glucides ${Math.round(bilanNutrition.apportGlucides)}g).`
+    );
+  }
+
+  const ipaq = patient.ipaqEvaluations[0];
+  if (ipaq) {
+    lignes.push(`Dernière évaluation IPAQ : score ${Math.round(ipaq.scoreTotal)} MET-min/semaine, niveau d'activité ${ipaq.classification}.`);
+  }
+
+  const objectifsActifs = patient.objectifs.filter((o) => !o.atteint);
+  if (objectifsActifs.length > 0) {
+    lignes.push("Objectifs SMART déjà posés et en cours (à ne pas contredire sans raison) :");
+    for (const o of objectifsActifs) {
+      lignes.push(`- ${o.texteSMART}${o.dateCible ? ` (échéance : ${o.dateCible.toISOString().slice(0, 10)})` : ""}`);
+    }
+  }
+
+  const modele = patient.modelesRation[0];
+  if (modele) {
+    lignes.push(`Modèle de ration actif : "${modele.nom}", ${modele.targetKcal} kcal/j.`);
   }
 
   if (patient.seances.length > 0) {

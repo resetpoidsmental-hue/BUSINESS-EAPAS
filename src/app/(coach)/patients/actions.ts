@@ -335,10 +335,11 @@ export async function suggererObjectifSMARTAction(
 
   const texteOriginal = str(formData, "texteOriginal");
   if (!texteOriginal) return { error: "Note d'abord l'objectif dans les mots du patient." };
+  const echeanceExistante = str(formData, "dateCible");
 
   try {
     const patientContext = await buildPatientContext(patientId);
-    const suggestion = await genererObjectifSMART({ patientContext, texteOriginal });
+    const suggestion = await genererObjectifSMART({ patientContext, texteOriginal, echeanceExistante });
     return { texteSMART: suggestion.texteSMART, dateCible: suggestion.dateCible ?? undefined };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
