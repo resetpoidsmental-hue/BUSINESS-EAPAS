@@ -764,6 +764,10 @@ Règles impératives, toujours respectées :
   suivi proposé, conseils clés — reste concret et actionnable, sans jargon technique.
 - Ton chaleureux et motivant, mais factuel : aucune promesse de résultat chiffré qui ne soit pas fondée sur le
   bilan fourni.
+- Si des écarts entre la ration prévue et le journal du patient te sont donnés, utilise-les UNIQUEMENT pour
+  orienter les conseils pratiques (quelles catégories d'aliments ont du mal à passer au quotidien) — jamais pour
+  changer les calories ou macros cibles, qui restent celles du bilan. Le journal est un indice sur quelques jours,
+  pas une mesure fiable : reste nuancé, ne tire pas de conclusion définitive d'un seul écart.
 - Réponds UNIQUEMENT avec le texte du programme en Markdown, rien d'autre autour.`;
 
 export interface GenererProgrammeNutritionnelParams {
@@ -773,16 +777,19 @@ export interface GenererProgrammeNutritionnelParams {
   formule: string;
   /** Dernier bilan nutritionnel, déjà formaté en texte. */
   bilan: string;
+  /** Écarts entre la ration prévue et le journal du patient sur les 7 derniers jours, ou null si indisponible. */
+  ecarts: string | null;
 }
 
 export async function genererProgrammeNutritionnel({
   patientContext,
   formule,
   bilan,
+  ecarts,
 }: GenererProgrammeNutritionnelParams): Promise<string> {
   return appelerClaudeTexte({
     system: PROGRAMME_NUTRITIONNEL_SYSTEM_PROMPT,
-    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nFormule choisie :\n${formule}\n\nDernier bilan nutritionnel :\n${bilan}\n\nRédige le programme.`,
+    userContent: `Profil du patient (anonymisé) :\n${patientContext}\n\nFormule choisie :\n${formule}\n\nDernier bilan nutritionnel :\n${bilan}\n\n${ecarts ? `Écarts observés entre la ration prévue et le journal du patient sur les 7 derniers jours (indicatif, à nuancer) :\n${ecarts}` : "Aucun journal exploitable pour l'instant."}\n\nRédige le programme.`,
     maxTokens: 2000,
   });
 }

@@ -20,6 +20,7 @@ import { verifierDisponibilite, declarerCreneauExceptionnel } from "@/lib/dispon
 import { parseDatetimeLocalParis } from "@/lib/agenda";
 import { envoyerNotificationPatient, emailDisponible } from "@/lib/email";
 import { formatDateHeureParis } from "@/lib/utils";
+import { calculerEcartsRation, type Repartition } from "@/lib/categories-ration";
 import type { Patient, Seance } from "@prisma/client";
 
 export interface ActionState {
@@ -582,9 +583,28 @@ export async function genererProgrammeNutritionnelAction(
 
   const bilanTexte = `IMC ${bilan.imc.toFixed(1)} (${bilan.classificationIMC}), apport calorique cible ${Math.round(bilan.apportCalorique)} kcal/j, objectif pondéral : ${bilan.objectifPonderal}, protéines ${Math.round(bilan.apportProteines)} g, lipides ${Math.round(bilan.apportLipides)} g, glucides ${Math.round(bilan.apportGlucides)} g.`;
 
+  // Écarts ration prévue / journal réel, uniquement utiles sur une régénération d'un patient déjà
+  // suivi — vide au premier programme, puisqu'il n'y a encore ni modèle de ration ni journal.
+  let ecartsTexte: string | null = null;
+  const modeleRation = await prisma.modeleRation.findFirst({ where: { patientId }, orderBy: { updatedAt: "desc" } });
+  if (modeleRation) {
+    const septJoursAvant = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const entries = await prisma.journalEntree.findMany({
+      where: { patientId, date: { gte: septJoursAvant } },
+      select: { date: true, repasStructure: true },
+    });
+    if (entries.length > 0) {
+      const repartition = JSON.parse(modeleRation.repartition) as Repartition;
+      const ecarts = calculerEcartsRation(repartition, entries);
+      if (ecarts.length > 0) {
+        ecartsTexte = ecarts.map((e) => `- ${e.label} : reporté ${e.loggedDays}/${e.targetDays} jours dans le journal`).join("\n");
+      }
+    }
+  }
+
   try {
     const patientContext = await buildPatientContext(patientId);
-    const programme = await genererProgrammeNutritionnel({ patientContext, formule, bilan: bilanTexte });
+    const programme = await genererProgrammeNutritionnel({ patientContext, formule, bilan: bilanTexte, ecarts: ecartsTexte });
     return { programme };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur inattendue lors de la génération." };
