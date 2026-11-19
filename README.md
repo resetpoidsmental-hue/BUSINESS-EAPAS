@@ -192,10 +192,35 @@ crontab -e
 
 Les sauvegardes sont stockées dans le même volume Docker que la base
 (`/app/data/backups/`), donc à l'abri d'une reconstruction du conteneur —
-mais pas d'une perte du volume lui-même. Pour une vraie sécurité, récupère-les
-régulièrement hors du serveur (le bouton « Télécharger la dernière
-sauvegarde » dans Réglages, ou `docker cp` depuis ce dossier) ou sauvegarde le
-volume Docker complet avec ton outil habituel.
+mais pas d'une perte du volume lui-même (panne disque, VPS compromis…),
+puisque la base ET toutes ses sauvegardes locales vivent au même endroit.
+
+### Volet hors site (chiffré, par email)
+
+Pour s'en protéger, chaque sauvegarde peut aussi partir automatiquement, **chiffrée**,
+par email (via Resend, déjà configuré pour les autres emails). Dans ton `.env` :
+
+```
+BACKUP_ENCRYPTION_KEY="<64 caractères hexadécimaux, génère avec : openssl rand -hex 32>"
+BACKUP_EMAIL_TO="<ton adresse email personnelle>"
+```
+
+Laisse les deux vides pour désactiver ce volet — la sauvegarde locale continue
+normalement. Le fichier joint à l'email est illisible sans `BACKUP_ENCRYPTION_KEY` :
+ni Resend ni ta boîte mail ne voient le contenu en clair. C'est précisément pour ça
+qu'il est **essentiel de conserver cette clé ailleurs que sur le serveur** (un
+gestionnaire de mots de passe, par exemple) — si elle est perdue en même temps que le
+serveur, toutes les sauvegardes déjà envoyées par email deviennent illisibles pour
+toujours, y compris pour toi.
+
+**Pour restaurer une sauvegarde reçue par email** (fichier `.enc` en pièce jointe) :
+
+```bash
+BACKUP_ENCRYPTION_KEY="<la même clé>" node scripts/dechiffrer-sauvegarde.js sauvegarde-xxx.db.enc restauree.db
+```
+
+Tu obtiens un fichier `.db` SQLite normal, directement exploitable (remplace le
+fichier pointé par `DATABASE_URL`, ou ouvre-le avec n'importe quel outil SQLite).
 
 ## Mettre à jour l'application
 

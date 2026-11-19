@@ -49,6 +49,36 @@ export async function envoyerRecuFacture({
 }
 
 /**
+ * Envoie la copie chiffrée hors site de la sauvegarde quotidienne. Le fichier joint est
+ * illisible sans BACKUP_ENCRYPTION_KEY — ni Resend ni la boîte mail de réception ne voient le
+ * contenu en clair.
+ */
+export async function envoyerSauvegardeHorsSite({
+  destinataire,
+  nomFichier,
+  contenuChiffre,
+}: {
+  destinataire: string;
+  nomFichier: string;
+  contenuChiffre: Buffer;
+}) {
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!from) throw new Error("RESEND_FROM_EMAIL manquant dans l'environnement.");
+
+  const resend = getResendClient();
+
+  const { error } = await resend.emails.send({
+    from: `Santé & Co <${from}>`,
+    to: destinataire,
+    subject: `Sauvegarde chiffrée — ${nomFichier}`,
+    text: `Sauvegarde quotidienne de la base de données, chiffrée, en pièce jointe.\n\nElle ne peut être ouverte qu'avec la clé BACKUP_ENCRYPTION_KEY — garde-la en lieu sûr, séparément de cette boîte mail et du serveur. Sans elle, ce fichier est illisible, y compris pour toi.`,
+    attachments: [{ filename: `${nomFichier}.enc`, content: contenuChiffre }],
+  });
+
+  if (error) throw new Error(`Échec de l'envoi de la sauvegarde hors site : ${error.message}`);
+}
+
+/**
  * Prévient un patient par email (changement de séance, réponse à un ticket SAV…). N'est appelé
  * qu'à la suite d'une action explicite du coach — jamais automatiquement.
  */
