@@ -346,6 +346,7 @@ Ajoute :
 */10 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappelVisio1h"
 */10 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=rappelVisio15min"
 7 * * * * curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=relanceProspects"
+0 8 * * 1 curl -s -X POST -H "x-cron-secret: <CRON_SECRET>" "https://<APP_HOST>/api/cron/telegram?mode=bilanHebdo"
 ```
 
 Les deux derniers envoient par **email** au patient (pas par Telegram) le
@@ -359,6 +360,33 @@ création (site vitrine, quiz ou saisi à la main) — jamais envoyé
 automatiquement : le coach reçoit le brouillon sur Telegram avec deux
 boutons, "Envoyer" ou "Ignorer", et rien ne part sans ce tap explicite.
 Chaque prospect n'est proposé qu'une seule fois, même ignoré.
+
+Le dernier (`bilanHebdo`) envoie chaque lundi matin le bilan de la semaine
+écoulée — CA encaissé, dépenses, bénéfice brut, nouveaux prospects et
+conversions, nombre d'alertes en cours, et le trafic du site si Umami est
+configuré (section suivante). Le même bilan, pour n'importe quelle semaine,
+est aussi consultable à tout moment dans l'appli sous **Bilan hebdo**.
+
+## Bilan hebdomadaire — trafic du site (Umami)
+
+Si tu as branché [Umami](./vitrine/README.md#analytics-umami) sur le site
+vitrine, le bilan hebdo peut aussi afficher ses statistiques (visites, pages
+vues, pages les plus consultées, provenance du trafic). Dans le `.env` de
+**cette** application (pas celui de `vitrine/`) :
+
+```
+UMAMI_URL="https://analytics.sante-and-co.com"
+UMAMI_WEBSITE_ID="<le même Website ID que dans vitrine/.env>"
+UMAMI_USERNAME="<identifiant d'un compte Umami>"
+UMAMI_PASSWORD="<son mot de passe>"
+```
+
+Recommandé : crée un compte Umami dédié à cette intégration (Settings →
+Users → Add user, rôle "Member" suffit) plutôt que de réutiliser ton compte
+admin — ses identifiants vivent dans ce `.env`, au même titre que les autres
+secrets de l'application. Laisse les 4 variables vides pour désactiver ce
+volet : le reste du bilan hebdo (CA, dépenses, prospects, alertes)
+fonctionne normalement sans.
 
 ## Sécurité & RGPD
 

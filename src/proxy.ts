@@ -37,6 +37,7 @@ const COACH_PROTECTED = [
   "/agenda",
   "/assistant",
   "/analytique",
+  "/bilan-hebdo",
 ];
 const PATIENT_PROTECTED = ["/portail"];
 const PATIENT_PUBLIC = ["/portail/connexion"];
@@ -82,6 +83,7 @@ export const config = {
     "/agenda/:path*",
     "/assistant/:path*",
     "/analytique/:path*",
+    "/bilan-hebdo/:path*",
     "/portail/:path*",
   ],
 };

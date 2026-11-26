@@ -7,12 +7,13 @@ import {
   envoyerRappelsVisio15min,
 } from "@/lib/rappels-seance";
 import { proposerRelancesProspects } from "@/lib/relance-prospects";
+import { envoyerBilanHebdoTelegram } from "@/lib/digest-hebdo";
 
 /**
  * Appelée par des tâches cron distinctes sur le VPS (mode=veille une fois le soir, mode=matin une
  * fois le matin, mode=rappel2h toutes les ~15-30 min, mode=rappelVisio1h et mode=rappelVisio15min
- * toutes les ~10 min, mode=relanceProspects environ une fois par heure) — voir le README pour les
- * horaires exacts.
+ * toutes les ~10 min, mode=relanceProspects environ une fois par heure, mode=bilanHebdo une fois
+ * par semaine le lundi matin) — voir le README pour les horaires exacts.
  */
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
@@ -35,9 +36,11 @@ export async function POST(req: NextRequest) {
       await envoyerRappelsVisio15min();
     } else if (mode === "relanceProspects") {
       await proposerRelancesProspects();
+    } else if (mode === "bilanHebdo") {
+      await envoyerBilanHebdoTelegram();
     } else {
       return new NextResponse(
-        "Paramètre mode manquant ou invalide (veille | matin | rappel2h | rappelVisio1h | rappelVisio15min | relanceProspects)",
+        "Paramètre mode manquant ou invalide (veille | matin | rappel2h | rappelVisio1h | rappelVisio15min | relanceProspects | bilanHebdo)",
         { status: 400 }
       );
     }

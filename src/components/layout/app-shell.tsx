@@ -19,6 +19,7 @@ import {
   CalendarDays,
   Tag,
   UserPlus,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/app/connexion/actions";
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/prospects", label: "Prospects", icon: UserPlus },
   { href: "/prestations", label: "Prestations", icon: Tag },
   { href: "/analytique", label: "Analytique", icon: BarChart3 },
+  { href: "/bilan-hebdo", label: "Bilan hebdo", icon: TrendingUp },
   { href: "/nutrition", label: "Nutrition", icon: Salad },
   { href: "/administratif", label: "Administratif", icon: FileText },
   { href: "/assistant", label: "Assistant IA", icon: Sparkles },
