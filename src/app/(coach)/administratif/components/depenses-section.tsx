@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { createDepense, deleteDepense, CATEGORIES_DEPENSE, type ActionState } from "../actions";
+import { createDepense, deleteDepense, type ActionState } from "../actions";
+import { CATEGORIES_DEPENSE } from "@/lib/categories-depense";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

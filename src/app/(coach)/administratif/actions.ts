@@ -311,17 +311,6 @@ export async function marquerPrelevementRegleManuellementAction(prelevementId: s
   revalidatePath("/administratif");
 }
 
-export const CATEGORIES_DEPENSE = [
-  "Assurance professionnelle",
-  "Matériel / équipement",
-  "Déplacements",
-  "Logiciels / abonnements",
-  "Formation",
-  "Communication / marketing",
-  "Frais bancaires",
-  "Autre",
-];
-
 export async function createDepense(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireCoachSession();
   const categorie = str(formData, "categorie");
